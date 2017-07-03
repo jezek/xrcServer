@@ -1,0 +1,43 @@
+<html>
+<head>
+<title>xRemoteControl</title>
+<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+<script type="text/javascript">
+  var connections = {}
+  $(function() {
+    if (window["WebSocket"]) {
+      connections.main = new WebSocket("ws://"+window.location.host+"/ws");
+      connections.main.onclose = function(evt) {
+        $("body").empty().html("<div>Connection closed.</div>");
+      }
+      connections.main.onmessage = function(evt) {
+        jsonData = jQuery.parseJSON(evt.data);
+        $(jsonData.Tag).empty().html(jsonData.Message);
+      }
+			$("#conn").empty().html("connected");
+    }
+    else {
+      $("body").empty().html("<div>Your browser does not support WebSockets.</div>");
+    }
+  });
+</script>
+<style type="text/css"><![CDATA[
+html {
+    overflow: hidden;
+}
+
+body {
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    color: white;
+}
+]]></style>
+</head>
+<body>
+	<div id="conn">loading...</div>
+</body>
+</html>
