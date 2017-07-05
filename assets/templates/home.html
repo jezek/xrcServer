@@ -1,43 +1,130 @@
 <html>
-<head>
-<title>xRemoteControl</title>
-<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
-<script type="text/javascript">
-  var connections = {}
-  $(function() {
-    if (window["WebSocket"]) {
-      connections.main = new WebSocket("ws://"+window.location.host+"/ws");
-      connections.main.onclose = function(evt) {
-        $("body").empty().html("<div>Connection closed.</div>");
-      }
-      connections.main.onmessage = function(evt) {
-        jsonData = jQuery.parseJSON(evt.data);
-        $(jsonData.Tag).empty().html(jsonData.Message);
-      }
-			$("#conn").empty().html("connected");
-    }
-    else {
-      $("body").empty().html("<div>Your browser does not support WebSockets.</div>");
-    }
-  });
-</script>
-<style type="text/css"><![CDATA[
-html {
-    overflow: hidden;
-}
+	<head>
+		<title>xRemoteControl</title>
+		<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+		<script type="text/javascript">
+$(function() {
+	var touchpad = {
+		socket: null,
+		pad: $("#touchpad"),
+		x:0, y:0, moved: false,
+		click: function() {
+			//this.log("click");
+			this.socket.send(JSON.stringify({
+				type: "clickleft"
+			}));
+		},
+		touchstart: function(e) {
+			e.preventDefault();
+			this.x=e.touches[0].pageX;
+			this.y=e.touches[0].pageY;
+			this.moved = false;
+			//this.log("touchstart [x,y]: ["+this.x+","+this.y+"]");
+		},
+		touchmove: function(e) {
+			e.preventDefault();
+			var dx = e.touches[0].pageX-this.x;
+			var dy = e.touches[0].pageY-this.y;
+			if (this.moved == false && ((dx*dx)+(dy*dy)) < 200) {
+				return;
+			}
+			this.socket.send(JSON.stringify({
+				type: "moverelative",
+				data: {
+					x: dx, 
+					y: dy
+				}
+			}));
+			this.x=e.touches[0].pageX;
+			this.y=e.touches[0].pageY;
+			this.moved = true;
+			//this.log("touchmove [dx,dy][x,y]: ["+dx+","+dy+"]["+this.x+","+this.y+"]");
+		},
+		touchend: function(e) {
+			e.preventDefault();
+			if (this.moved == false) {
+				this.click();
+			}
+			//this.log("touchend");
+		},
+		touchcancel: function(e) {
+			e.preventDefault();
+			this.log("touchcancel");
+		},
+		mousedown: function(e) {
+			this.log("mousedown");
+		},
+		mouseup: function(e) {
+			this.log("mouseup");
+		},
+		log: function(t) {
+			$("#content .log").prepend("<p>"+t+"</p>");
+		}
+	};
+	if (window["WebSocket"]) {
+		touchpad.socket = new WebSocket("ws://"+window.location.host+"/ws");
+		touchpad.socket.onopen = function(evt) {
+			touchpad.log("WebSocket connected");
+			touchpad.pad
+				.on("touchstart", function(e){touchpad.touchstart(e)})
+				.on("touchmove", function(e){touchpad.touchmove(e)})
+				.on("touchend", function(e){touchpad.touchend(e)})
+				.on("touchcancel",function(e){touchpad.touchcancel(e)});
+		}
+		touchpad.socket.onclose = function(evt) {
+			touchpad.log("WebSocket closed");
+			touchpad.pad.off();
+			touchpad.socket = null;
+		}
+		touchpad.socket.onmessage = function(evt) {
+			jsonData = jQuery.parseJSON(evt.data);
+			touchpad.log("WebSocket read: <code>"+jsonData+"</code>");
+		}
+	}
+	else {
+		touchpad.log("Your browser does not support WebSockets.");
+	}
+});
+		</script>
+		<style type="text/css">
 
 body {
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    background: black;
-    color: white;
+	margin:0;
+	padding:0;
 }
-]]></style>
-</head>
-<body>
-	<div id="conn">loading...</div>
-</body>
+
+#content {
+	position: fixed;
+	overflow: hidden;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	background: black;
+	color: white;
+}
+#content .log {
+	border: 1px solid cyan;
+}
+#content .log p {
+	margin:0;
+}
+
+#touchpad {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	border: 1px solid red;
+	color: transparent;
+}
+		</style>
+	</head>
+	<body>
+		<div id="content">
+			<div id="touchpad"></div>
+			<div class="log"><p>loading...</p></div>
+		</div>
+	</body>
 </html>
