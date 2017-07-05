@@ -1,6 +1,7 @@
 <html>
 	<head>
 		<title>xRemoteControl</title>
+    <meta name="viewport" content="width=device-width,user-scalable=no">
 		<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
 		<script type="text/javascript">
 $(function() {
@@ -8,18 +9,18 @@ $(function() {
 		socket: null,
 		pad: $("#touchpad"),
 		x:0, y:0, moved: false,
-		click: function() {
-			//this.log("click");
+		click: function(e) {
 			this.socket.send(JSON.stringify({
 				type: "clickleft"
 			}));
+			this.log("click");
 		},
 		touchstart: function(e) {
 			e.preventDefault();
 			this.x=e.touches[0].pageX;
 			this.y=e.touches[0].pageY;
 			this.moved = false;
-			//this.log("touchstart [x,y]: ["+this.x+","+this.y+"]");
+			this.log("touchstart [x,y]: ["+this.x+","+this.y+"]");
 		},
 		touchmove: function(e) {
 			e.preventDefault();
@@ -31,7 +32,7 @@ $(function() {
 			this.socket.send(JSON.stringify({
 				type: "moverelative",
 				data: {
-					x: dx, 
+					x: dx,
 					y: dy
 				}
 			}));
@@ -43,9 +44,11 @@ $(function() {
 		touchend: function(e) {
 			e.preventDefault();
 			if (this.moved == false) {
-				this.click();
+				this.click(e);
 			}
-			//this.log("touchend");
+			this.x=0;
+			this.y=0;
+			this.log("touchend");
 		},
 		touchcancel: function(e) {
 			e.preventDefault();
@@ -57,6 +60,15 @@ $(function() {
 		mouseup: function(e) {
 			this.log("mouseup");
 		},
+		mouseenter: function(e) {
+			this.log("mouseenter");
+		},
+		mouseleave: function(e) {
+			this.log("mouseleave");
+		},
+		mousemove: function(e) {
+			this.log("mousemove");
+		},
 		log: function(t) {
 			$("#content .log").prepend("<p>"+t+"</p>");
 		}
@@ -66,6 +78,12 @@ $(function() {
 		touchpad.socket.onopen = function(evt) {
 			touchpad.log("WebSocket connected");
 			touchpad.pad
+				//.on("click", function(e){touchpad.click(e)})
+				//.on("mousemove", function(e){touchpad.mousemove(e)})
+				//.on("mouseenter", function(e){touchpad.mouseenter(e)})
+				//.on("mouseleave", function(e){touchpad.mouseleave(e)})
+				//.on("mousedown", function(e){touchpad.mousedown(e)})
+				//.on("mouseup", function(e){touchpad.mouseup(e)})
 				.on("touchstart", function(e){touchpad.touchstart(e)})
 				.on("touchmove", function(e){touchpad.touchmove(e)})
 				.on("touchend", function(e){touchpad.touchend(e)})
