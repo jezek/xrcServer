@@ -77,11 +77,15 @@ func wsHandler(ws *websocket.Conn) {
 				log.Printf("wsHandler: click: %s unknown", b)
 			}
 		case "scroll":
-			y := int(m.Data["y"].(float64))
-			if y >= 1 {
+			dir := m.Data["dir"].(string)
+			log.Printf("wsHandler: scroll: %s", dir)
+			switch dir {
+			case "down":
 				disp.DefaultScreen().Window().Pointer().Control().ScrollDown()
-			} else if y <= -1 {
+			case "up":
 				disp.DefaultScreen().Window().Pointer().Control().ScrollUp()
+			default:
+				log.Printf("wsHandler: scroll: %s unknown", dir)
 			}
 		default:
 			log.Printf("wsHandler: unknown type: %s", m.Type)
@@ -98,6 +102,7 @@ func main() {
 
 	http.HandleFunc("/", homeHandler)
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(*assets+"js/"))))
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(*assets+"css/"))))
 	http.Handle("/ws", websocket.Handler(wsHandler))
 	log.Printf("xrcServer listens on port :%s", *port)
 	if err := http.ListenAndServe(":"+*port, nil); err != nil {
