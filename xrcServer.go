@@ -13,7 +13,7 @@ import (
 
 var disp *xgo.Display
 
-var port = flag.String("p", "8888", "http service port")
+var port = flag.String("p", "10905", "http service port")
 var assets = flag.String("d", "assets/", "working dir")
 
 var httpHomeTemplateFilename string
@@ -22,7 +22,7 @@ var homeTempl *template.Template
 func init() {
 	flag.Parse()
 
-	httpHomeTemplateFilename = *assets + "templates/home.html"
+	httpHomeTemplateFilename = *assets + "index.html"
 	homeTempl = template.Must(template.ParseFiles(httpHomeTemplateFilename))
 
 }

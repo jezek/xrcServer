@@ -28,15 +28,16 @@ function TouchPad(elm) {
 	this.elm.on("touchmove", function(e) {
 		//log("touchmove");
 		e.preventDefault();
+		var i, t, touch;
 		switch (this.touches.size) {
 			case 1:
 				// 1 finger move
-				for (var i = 0; i < e.changedTouches.length; i++) {
-					var t = e.changedTouches[i];
+				for (i = 0; i < e.changedTouches.length; i++) {
+					t = e.changedTouches[i];
 					if (!this.touches.has(t.identifier)) {
 						continue;
 					}
-					var touch = this.touches.get(t.identifier);
+					touch = this.touches.get(t.identifier);
 					t.dx = t.screenX-touch.last.screenX;
 					t.dy = t.screenY-touch.last.screenY;
 					if (touch.moved == undefined && ((t.dx*t.dx)+(t.dy*t.dy)) < 200) {
@@ -53,30 +54,30 @@ function TouchPad(elm) {
 			case 2:
 				// 2 finger move
 				var dy = 0;
-				for (var i = 0; i < e.changedTouches.length; i++) {
-					var t = e.changedTouches[i];
+				for (i = 0; i < e.changedTouches.length; i++) {
+					t = e.changedTouches[i];
 					if (!this.touches.has(t.identifier)) {
 						continue;
 					}
-					var touch = this.touches.get(t.identifier);
+					touch = this.touches.get(t.identifier);
 					dy += t.screenY - touch.last.screenY;
 				}
 				if ((dy*dy) < 100) {
 					break;
 				}
 				//log("scroll "+dy);
-				for (var i = 0; i < e.changedTouches.length; i++) {
-					var t = e.changedTouches[i];
+				for (i = 0; i < e.changedTouches.length; i++) {
+					t = e.changedTouches[i];
 					if (!this.touches.has(t.identifier)) {
 						continue;
 					}
-					var touch = this.touches.get(t.identifier);
+					touch = this.touches.get(t.identifier);
 					touch.last = t;
 				}
-				for (var ti of this.touches.entries()) {
-					ti[1].moved = true;
-					ti[1].preventClick = true;
-				}
+				this.touches.entries().forEach(function() {
+					this.moved = true;
+					this.preventClick = true;
+				});
 				var dir = "up";
 				if (dy > 0) {
 					dir = "down";
@@ -111,9 +112,9 @@ function TouchPad(elm) {
 					this.elm.trigger("touchtap");
 					break;
 				case 2:
-					for (var ti of this.touches.entries()) {
-						ti[1].rightClick=true;
-					}
+					this.touches.entries().forEach(function() {
+						this.rightClick=true;
+					});
 					break;
 				default:
 			}
@@ -123,4 +124,4 @@ function TouchPad(elm) {
 	this.elm.on("touchcancel", function(e) {
 		//todo
 	}.bind(this));
-};
+}
