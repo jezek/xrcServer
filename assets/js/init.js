@@ -6,19 +6,26 @@ function log(t) {
 $(function() {
 	log("init");
 	var tabs = new Tabs("#header .tab");
+
 	$(".touchpad").each(function(){
-		$(this).touchpad = new TouchPad(this);
+		this.touchpad = new TouchPad(this);
 	});
 	$(".touchbutton").each(function(){
-		$(this).touchbutton= new TouchButton(this);
+		this.touchbutton= new TouchButton(this);
 	});
+
+	$("#logpage .clear").on("click", function(e) {
+		e.preventDefault();
+		$("#log").empty();
+	});
+
 	if (window.WebSocket) {
 		var socket = new window.WebSocket("ws://"+window.location.host+"/ws");
 		socket.onopen = function(evt) {
 			log("WebSocket connected");
 			pad = $("#touchpad");
 			pad.on("touchtap", function() {
-				//log("pad on: touchtap");
+				log("pad on: touchtap");
 				socket.send(JSON.stringify({
 					type: "click",
 					data:{
@@ -27,7 +34,7 @@ $(function() {
 				}));
 			});
 			pad.on("touchdoubletap", function() {
-				//log("pad on: touchdoubletap");
+				log("pad on: touchdoubletap");
 				socket.send(JSON.stringify({
 					type: "click",
 					data:{
@@ -36,7 +43,7 @@ $(function() {
 				}));
 			});
 			pad.on("touchmoverelative", function(e, info) {
-				//log("pad on: touchmoverelative");
+				log("pad on: touchmoverelative");
 				socket.send(JSON.stringify({
 					type: "moverelative",
 					data: {
@@ -46,7 +53,7 @@ $(function() {
 				}));
 			});
 			pad.on("touchscroll", function(e, info) {
-				//log("pad on: touchscroll: "+info.dir);
+				log("pad on: touchscroll: "+info.dir);
 				socket.send(JSON.stringify({
 					type: "scroll",
 					data: {
@@ -76,12 +83,40 @@ $(function() {
 				}));
 			});
 			left.on("touchdownlock", function(){
-				//log("left on: touchdownlock");
+				log("left on: touchdownlock");
 				$(this).addClass("locked");
+				$(".touchpad").each(function(){
+					this.touchpad.options.tap_enabled = false;
+				});
 			});
 			left.on("touchdownunlock", function(){
-				//log("left on: touchdownunlock");
+				log("left on: touchdownunlock");
 				$(this).removeClass("locked");
+				$(".touchpad").each(function(){
+					this.touchpad.options.tap_enabled = true;
+				});
+			});
+
+			right = $("#button_right");
+			right.on("touchdown", function(){
+				log("right on: touchdown");
+				$(this).addClass("down");
+				socket.send(JSON.stringify({
+					type: "down",
+					data: {
+						button: "right"
+					}
+				}));
+			});
+			right.on("touchup", function(){
+				log("right on: touchup");
+				$(this).removeClass("down");
+				socket.send(JSON.stringify({
+					type: "up",
+					data: {
+						button: "right"
+					}
+				}));
 			});
 		};
 		socket.onclose = function(evt) {
@@ -98,6 +133,10 @@ $(function() {
 			left.off("touchup");
 			left.off("touchdownlock");
 			left.off("touchdownunlock");
+
+			right = $("#button_right");
+			right.off("touchdown");
+			right.off("touchup");
 		};
 		socket.onmessage = function(evt) {
 			jsonData = jQuery.parseJSON(evt.data);

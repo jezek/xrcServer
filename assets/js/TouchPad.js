@@ -1,13 +1,15 @@
-function TouchPad(elm) {
-
+function TouchPad(elm, opt) {
 	this.elm = $(elm);
+
+	this.options = Object.assign({
+		tap_enabled: true,
+		first_move_distance: 200
+	}, this.elm.data(), opt);
+
 	this.touches = new Map();
-	
-	//log("this.elm on touchstart");
+
 	this.elm.on("touchstart", function(e) {
 		//log("touchstart");
-		//log("this: "+JSON.stringify(this));
-		//log("e: "+JSON.stringify(e));
 		e.preventDefault();
 		for (var i = 0; i < e.changedTouches.length; i++) {
 			var t = e.changedTouches[i];
@@ -16,9 +18,11 @@ function TouchPad(elm) {
 				case 1:
 					this.touches.set(t.identifier, {
 						last: t,
-						sizeCreated: this.touches.size
+						sizeCreated: this.touches.size,
+						moved: false,
+						preventClick: !this.options.tap_enabled
 					});
-					//log("touches.size "+this.touches.size);
+					//log(t.identifier+": set touch "+this.touches.size);
 					break;
 				default:
 					return;
@@ -32,6 +36,7 @@ function TouchPad(elm) {
 		switch (this.touches.size) {
 			case 1:
 				// 1 finger move
+				//log("1 finger move");
 				for (i = 0; i < e.changedTouches.length; i++) {
 					t = e.changedTouches[i];
 					if (!this.touches.has(t.identifier)) {
@@ -40,19 +45,25 @@ function TouchPad(elm) {
 					touch = this.touches.get(t.identifier);
 					t.dx = t.screenX-touch.last.screenX;
 					t.dy = t.screenY-touch.last.screenY;
-					if (touch.moved == undefined && ((t.dx*t.dx)+(t.dy*t.dy)) < 200) {
-						break;
+
+					if (touch.moved == false) {
+						if (this.options.tap_enabled && (t.dx*t.dx)+(t.dy*t.dy) < this.options.first_move_distance) {
+							break;
+						}
+						//log(t.identifier+": first move");
+						touch.moved = true;
+						touch.preventClick = true;
+					} else {
+						//log(t.identifier+": trigger: touchmoverelative");
+						this.elm.trigger("touchmoverelative", [t]);
 					}
-					touch.moved = true;
-					touch.preventClick = true;
-					//log("trigger: touchmoverelative");;
-					this.elm.trigger("touchmoverelative", [t]);
 					touch.last = t;
 					break;
 				}
 				break;
 			case 2:
 				// 2 finger move
+				//log("2 finger move");
 				var dy = 0;
 				for (i = 0; i < e.changedTouches.length; i++) {
 					t = e.changedTouches[i];
@@ -74,9 +85,9 @@ function TouchPad(elm) {
 					touch = this.touches.get(t.identifier);
 					touch.last = t;
 				}
-				this.touches.entries().forEach(function() {
-					this.moved = true;
-					this.preventClick = true;
+				this.touches.forEach(function(val) {
+					val.moved = true;
+					val.preventClick = true;
 				});
 				var dir = "up";
 				if (dy > 0) {
@@ -90,7 +101,7 @@ function TouchPad(elm) {
 	}.bind(this));
 	this.elm.on("touchend", function(e) {
 		//log("touchend");
-		//log("touches.size "+this.touches.size);
+		//log("this.touches.size "+this.touches.size);
 		e.preventDefault();
 		for (var i = 0; i < e.changedTouches.length; i++) {
 			var t = e.changedTouches[i];
@@ -100,7 +111,7 @@ function TouchPad(elm) {
 			var touch = this.touches.get(t.identifier);
 			switch (this.touches.size) {
 				case 1:
-					if (touch.preventClick == true) {
+					if (!this.options.tap_enabled || touch.preventClick == true) {
 						break;
 					}
 					if (touch.rightClick == true) {
@@ -112,8 +123,8 @@ function TouchPad(elm) {
 					this.elm.trigger("touchtap");
 					break;
 				case 2:
-					this.touches.entries().forEach(function() {
-						this.rightClick=true;
+					this.touches.forEach(function(val) {
+						val.rightClick=true;
 					});
 					break;
 				default:

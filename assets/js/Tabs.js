@@ -17,10 +17,10 @@ function Tabs(elms) {
 			body.hide();
 		}
 		$(elm).on("click", {tabs:this}, function(e) {
-			log("tabs.elm on: click");
-			log($(this).data("for"));
+			e.preventDefault();
+			//log($(this).data("for")+" header on: click");
 			if (e.data.tabs.selected == this) {
-				log("allready selected");
+				//log("allready selected");
 				return;
 			}
 			sel = e.data.tabs.selected;

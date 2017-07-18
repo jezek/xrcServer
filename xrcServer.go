@@ -65,6 +65,28 @@ func wsHandler(ws *websocket.Conn) {
 			x, y := int(2*m.Data["x"].(float64)), int(2*m.Data["y"].(float64))
 			log.Printf("wsHandler: move relative x: %d, y:  %d", x, y)
 			disp.DefaultScreen().Window().Pointer().Control().MoveRelative(x, y)
+		case "down":
+			b := m.Data["button"].(string)
+			log.Printf("wsHandler: down: %s", b)
+			switch b {
+			case "left":
+				disp.DefaultScreen().Window().Pointer().Control().DownLeft()
+			case "right":
+				disp.DefaultScreen().Window().Pointer().Control().DownRight()
+			default:
+				log.Printf("wsHandler: down: %s unknown", b)
+			}
+		case "up":
+			b := m.Data["button"].(string)
+			log.Printf("wsHandler: up: %s", b)
+			switch b {
+			case "left":
+				disp.DefaultScreen().Window().Pointer().Control().UpLeft()
+			case "right":
+				disp.DefaultScreen().Window().Pointer().Control().UpRight()
+			default:
+				log.Printf("wsHandler: up: %s unknown", b)
+			}
 		case "click":
 			b := m.Data["button"].(string)
 			log.Printf("wsHandler: click: %s", b)
