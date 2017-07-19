@@ -41,6 +41,26 @@ div.page {
 	width: 100%;
 }
 
+#reload {
+	position: fixed;
+	overflow: hidden;
+	padding: 0;
+	margin: 0;
+	top: 30px;
+	bottom: 0;
+	width: 100%;
+	display: flex;
+  justify-content: center;
+  align-items: center;
+	text-align: center;
+}
+
+#reload a {
+	display: block;
+	color: white;
+	margin: 20px 0;
+}
+
 #logpage .clear {
 	position: fixed;
 	top: 41px;
@@ -98,4 +118,3 @@ height: 70%;*/
 	border: 1px solid red;
 	background-color: red;
 }
-		
