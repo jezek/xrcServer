@@ -16,6 +16,7 @@
 	<body>
 		<div id="header">
 			<a href="#" class="tab" data-for="touchpage">Touch</a>
+			<a href="#" class="tab" data-for="keypage">Key</a>
 			<a href="#" class="tab" data-for="reload" style="display:none">Reload</a>
 			<a href="#" class="tab" data-for="logpage">Log</a>
 		</div>
@@ -23,6 +24,16 @@
 			<div id="touchpad" class="touchpad"></div>
 			<div id="button_left" class="touchbutton" data-two_finger_lock="true"></div>
 			<div id="button_right" class="touchbutton"></div>
+		</div>
+		<div id="keypage" class="page">
+			<div class="row">
+				<input class="keyinput" type="text" /><a href="#" class="focus">focus</a>
+			</div>
+			<div class="row">
+				<div id="ctrl" class="touchbutton">ctrl</div>
+				<div id="alt" class="touchbutton">alt</div>
+				<div id="shift" class="touchbutton">shift</div>
+			</div>
 		</div>
 		<div id="reload" class="page">
 			<div>

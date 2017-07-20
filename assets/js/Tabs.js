@@ -17,6 +17,7 @@ function Tabs(elms) {
 		$(elm).addClass("selected");
 		body = this.tabs.get(elm);
 		body.show();
+		$(elm).trigger("select");
 	};
 
 	$(elms).each(function(i, elm) {
@@ -40,8 +41,9 @@ function Tabs(elms) {
 		}
 		$(elm).on("click", {tabs:this}, function(e) {
 			e.preventDefault();
-			//log($(this).data("for")+" header on: click");
+			log($(this).data("for")+" header on: click");
 			e.data.tabs.select(this);
+			log($(this).data("for")+" header on: click end");
 		});
 	}.bind(this));
 }

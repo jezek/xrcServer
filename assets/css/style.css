@@ -9,16 +9,22 @@ body {
 	position: fixed;
 	top: 0;
 	width:100%;
-	height: 29px;
+	box-sizing: border-box;
+	height: 2em;
 	border-bottom: 1px solid white;
 	background: black;
+}
+
+a {
+	color: white;
 }
 
 #header .tab {
 	display: block;
   float: left;
-	padding: 5px;
-	color: white;
+	box-sizing: border-box;
+	padding: 0.5em;
+	height: 2em;
 	text-decoration: none;
 }
 
@@ -28,7 +34,8 @@ body {
 }
 
 div.page {
-	margin-top: 29px;
+	display: none;
+	margin-top: 2em;
 }
 
 #touchpage {
@@ -36,59 +43,33 @@ div.page {
 	overflow: hidden;
 	padding: 0;
 	margin: 0;
-	top: 30px;
+	top: 2em;
 	bottom: 0;
 	width: 100%;
 }
 
-#reload {
-	position: fixed;
-	overflow: hidden;
-	padding: 0;
-	margin: 0;
-	top: 30px;
-	bottom: 0;
-	width: 100%;
-	display: flex;
-  justify-content: center;
-  align-items: center;
-	text-align: center;
-}
-
-#reload a {
-	display: block;
-	color: white;
-	margin: 20px 0;
-}
-
-#logpage .clear {
-	position: fixed;
-	top: 41px;
-	right: 20px;
-	color: white;
-}
-
-#log {
-	padding: 5px;
-}
-
-#log p {
-	margin:0;
-	font-size: 75%;
+.touchpad {
+	border: 1px solid gray;
 }
 
 #touchpad {
-	/*box-sizing: border-box;
-width: 100%;
-height: 70%;*/
 	position: absolute;
 	top:0;
 	bottom:20%;
 	left:0;
 	right:0;
 }
-.touchpad {
+
+.touchbutton {
 	border: 1px solid gray;
+}
+
+.touchbutton.down {
+	background-color: green;
+}
+
+.touchbutton.locked {
+	border: 2px solid red;
 }
 
 #button_left {
@@ -107,14 +88,80 @@ height: 70%;*/
 	right:0;
 }
 
-.touchbutton {
-	border: 1px solid gray;
+#keypage {
+	padding-top: 0.5em;
 }
 
-.down {
-	background-color: green;
+#keypage .row {
+	min-height: 3em;
+	width:96%;
+	padding: 0 2%;
+	display: flex;
+  justify-content: center;
+  align-items: center;
+	text-align: center;
 }
-.locked {
-	border: 1px solid red;
-	background-color: red;
+
+#keypage input.keyinput {
+	box-sizing: border-box;
+	width: 70%;
+	height: 2em;
+}
+
+#keypage a.focus {
+	box-sizing: border-box;
+	width: 30%;
+}
+
+#ctrl, #alt, #shift {
+	display: flex;
+	box-sizing: border-box;
+	width: 30%;
+	height: 2em;
+	margin: 0 2.5%;
+	justify-content: center;
+	text-align: center;
+	align-items: center;
+}
+
+#ctrl {
+	margin-left: 0;
+}
+
+#shift {
+	margin-right: 0;
+}
+
+#reload {
+	position: fixed;
+	overflow: hidden;
+	padding: 0;
+	margin: 0;
+	top: 30px;
+	bottom: 0;
+	width: 100%;
+	display: flex;
+  justify-content: center;
+  align-items: center;
+	text-align: center;
+}
+
+#reload a {
+	display: block;
+	margin: 20px 0;
+}
+
+#logpage .clear {
+	position: fixed;
+	top: 41px;
+	right: 20px;
+}
+
+#log {
+	padding: 0.5em;
+}
+
+#log p {
+	margin:0;
+	font-size: 75%;
 }

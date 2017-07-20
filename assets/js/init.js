@@ -1,4 +1,3 @@
-
 function log(t) {
 	$("#log").prepend("<p>"+t+"</p>");
 }
@@ -6,6 +5,17 @@ function log(t) {
 $(function() {
 	log("init");
 	var tabs = new Tabs("#header .tab");
+	var keyinput = $("#keypage input.keyinput");
+
+	$(tabs.pages.keypage.header).on("select", function(e) {
+		//log("keypage selected");
+		keyinput.focus();
+	});
+
+	$("#keypage .focus").on("click", function(e) {
+		e.preventDefault();
+		keyinput.focus();
+	});
 
 	$("#logpage .clear").on("click", function(e) {
 		e.preventDefault();
@@ -119,6 +129,31 @@ $(function() {
 					}
 				}));
 			});
+
+			keyinput.on("keydown", function(e) {
+				if (e.key == "Process") {
+					return;
+				}
+				e.preventDefault();
+				log("keydown");
+				log("keydown: char: "+e.char);
+				log("keydown: key: "+e.key);
+				log("keydown: charCode: "+e.charCode);
+				log("keydown: keyCode: "+e.keyCode);
+				log("keydown: repeat: "+e.repeat);
+				log("keydown: ctrlKey: "+e.ctrlKey);
+				log("keydown: altKey: "+e.altKey);
+				log("keydown: shiftKey: "+e.shiftKey);
+				log("keydown: metaKey: "+e.metaKey);
+			});
+
+			keyinput.on("input", function(e) {
+				log("input");
+				log("input: text: "+$(this).val());
+				$(this).val("");
+				log("input: text: "+$(this).val());
+			});
+
 		};
 		socket.onclose = function(evt) {
 			log("WebSocket closed");
