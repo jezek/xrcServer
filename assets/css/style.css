@@ -104,13 +104,10 @@ div.page {
 
 #keypage input.keyinput {
 	box-sizing: border-box;
-	width: 70%;
+	width: 100%;
 	height: 2em;
-}
-
-#keypage a.focus {
-	box-sizing: border-box;
-	width: 30%;
+	background:	black;
+	color: white;
 }
 
 #ctrl, #alt, #shift {

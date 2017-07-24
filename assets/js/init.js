@@ -1,20 +1,23 @@
-function log(t) {
-	$("#log").prepend("<p>"+t+"</p>");
+function log(t, opt) {
+	opt = opt || {};
+	var elm = $('<p/>');
+	if (typeof opt.color === "string") {
+		elm.css("color", opt.color);
+	}
+	if (typeof opt.level === "number") {
+		elm.css("margin-left", ""+opt.level+"em");
+	}
+	elm.html(t);
+	$("#log").append(elm);
 }
 
 $(function() {
 	log("init");
 	var tabs = new Tabs("#header .tab");
-	var keyinput = $("#keypage input.keyinput");
 
 	$(tabs.pages.keypage.header).on("select", function(e) {
 		//log("keypage selected");
-		keyinput.focus();
-	});
-
-	$("#keypage .focus").on("click", function(e) {
-		e.preventDefault();
-		keyinput.focus();
+		$("#keypage input.keyinput").focus();
 	});
 
 	$("#logpage .clear").on("click", function(e) {
@@ -130,28 +133,138 @@ $(function() {
 				}));
 			});
 
-			keyinput.on("keydown", function(e) {
-				if (e.key == "Process") {
-					return;
-				}
-				e.preventDefault();
-				log("keydown");
-				log("keydown: char: "+e.char);
-				log("keydown: key: "+e.key);
-				log("keydown: charCode: "+e.charCode);
-				log("keydown: keyCode: "+e.keyCode);
-				log("keydown: repeat: "+e.repeat);
-				log("keydown: ctrlKey: "+e.ctrlKey);
-				log("keydown: altKey: "+e.altKey);
-				log("keydown: shiftKey: "+e.shiftKey);
-				log("keydown: metaKey: "+e.metaKey);
+			function KeyInput(elm, opt) {
+				this.elm = $(elm);
+
+				this.options = Object.assign({
+				}, this.elm.data(), opt);
+
+				this.lastValue = "";
+				this.wasInput = false;
+
+				this.elm.on("focus", function(e) {
+					this.lastValue = "";
+				}.bind(this));
+
+				this.elm.on("keydown", function(e) {
+					log("keydown", {color: "cyan"});
+					log("e.key: "+e.key, {level: 1});
+					log("e.keyCode: "+e.keyCode, {level: 1});
+					log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
+					log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+
+					if (e.keyCode == 229) { //Process
+						this.wasInput = false;
+						return;
+					}
+
+					this.wasInput = true;
+					e.preventDefault();
+					//log("keydown: char: "+e.char);
+					//log("keydown: key: "+e.key);
+					//log("keydown: charCode: "+e.charCode);
+					//log("keydown: keyCode: "+e.keyCode);
+					//log("keydown: repeat: "+e.repeat);
+					//log("keydown: ctrlKey: "+e.ctrlKey);
+					//log("keydown: altKey: "+e.altKey);
+					//log("keydown: shiftKey: "+e.shiftKey);
+					//log("keydown: metaKey: "+e.metaKey);
+
+					this.elm.trigger($.Event("keyinput", {
+						text: String.fromCharCode(e.keyCode)
+					}));
+				}.bind(this));
+
+				this.textDifference = function(prev, now) {
+					if (prev == now) {
+						return "";
+					}
+					if (now.indexOf(prev) == 0) {
+						return now.slice(prev.length);
+					} 
+					if (prev.indexOf(now) == 0) {
+							return String.fromCharCode(8).repeat(prev.length - now.length);
+					} 
+					return String.fromCharCode(8).repeat(prev.length)+now;
+				};
+
+				this.elm.on("input", function(e) {
+					log("input", {color: "lightblue"});
+					log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
+					log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+
+					this.wasInput = true;
+
+					diff = this.textDifference(this.lastValue, this.elm.val());
+					replaced = this.elm.val().indexOf(this.lastValue) != 0 && this.lastValue.indexOf(this.elm.val()) != 0;
+					log("replaced: "+replaced, {level: 1});
+					this.lastValue = this.elm.val();
+					this.elm.val("");
+					if (diff === "") {
+						this.lastValue="";
+						return;
+					}
+
+					this.elm.trigger($.Event("keyinput", {
+						text: diff
+					}));
+					if (diff === " " || replaced) {
+						this.lastValue="";
+						return;
+					}
+				}.bind(this));
+
+				this.elm.on("keyup", function(e) {
+					log("keypup", {color: "lightblue"});
+					log("e.key: "+e.key, {level: 1});
+					log("e.keyCode: "+e.keyCode, {level: 1});
+					log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
+					log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+					log("this.wasInput: "+this.wasInput, {level: 1});
+					
+					diff = this.textDifference(this.lastValue, this.elm.val());
+
+					if (this.wasInput) {
+						if (diff == " ") {
+							this.lastValue="";
+						}
+						return;
+					}
+					
+					autocorrect = this.lastValue.length>1 && this.elm.val()=="";
+
+					this.lastValue = this.elm.val();
+					this.elm.val("");
+
+					if (diff === "" || autocorrect) {
+						return;
+					}
+
+					this.elm.trigger($.Event("keyinput", {
+						text: diff
+					}));
+
+				}.bind(this));
+			}
+
+			// keyinput
+
+			$("input.keyinput").each(function() {
+				this.keyinput = new KeyInput(this);
 			});
 
-			keyinput.on("input", function(e) {
-				log("input");
-				log("input: text: "+$(this).val());
-				$(this).val("");
-				log("input: text: "+$(this).val());
+			var keyinput = $("#keypage input.keyinput");
+			keyinput.on("keyinput", function(e) {
+				log("keyinput", {color: "red"});
+				log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
+				var codes="";
+				for (i=0; i<e.text.length; i++) {
+					if (codes != "") {
+						codes +=",";
+					}
+					codes += ""+e.text.charCodeAt(i);
+				}
+				log("e.text: codes: "+codes, {level: 1});
 			});
 
 		};
@@ -190,12 +303,13 @@ $(function() {
 					clearInterval(interval);
 					interval = null;
 				}
-				$.ajax(window.location.href, {
+				var url = window.location.protocol+"//"+window.location.host+"/ping";
+				$.ajax(url, {
 					success: function(){
 						window.location.reload();
 					},
 					error:function(){
-						log("Server offline");
+						log("Server offline: "+url);
 						var time = startTime;
 						timer.html(""+time);
 						interval = setInterval(function() {
