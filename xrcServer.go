@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sync"
 	"xgo"
 
 	"golang.org/x/net/websocket"
@@ -39,14 +40,38 @@ func homeHandler(c http.ResponseWriter, req *http.Request) {
 }
 
 type message struct {
-	Type string                 `json:type`
-	Data map[string]interface{} `json:data`
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data"`
 }
 
 func wsHandler(ws *websocket.Conn) {
 	log.Printf("wsHandler: start")
 	defer log.Printf("wsHandler: stop")
 	defer ws.Close()
+
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+
+	send := make(chan []byte, 1)
+	defer close(send)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case msg, ok := <-send:
+				if !ok {
+					log.Printf("wsHandler: send: closed")
+					return
+				}
+				if _, err := ws.Write(msg); err != nil {
+					log.Printf("wsHandler: send: error %v", err)
+				}
+			}
+		}
+	}()
+
 	var msg string
 	for {
 		if err := websocket.Message.Receive(ws, &msg); err != nil {
@@ -109,6 +134,25 @@ func wsHandler(ws *websocket.Conn) {
 			default:
 				log.Printf("wsHandler: scroll: %s unknown", dir)
 			}
+		case "key":
+			log.Printf("wsHandler: key: %v", m.Data)
+			m.Type = "key-confirm"
+			r, err := json.Marshal(m)
+			if err != nil {
+				log.Printf("wsHandler: key: marshal error: %s", err)
+				break
+			}
+			text, ok := m.Data["text"].(string)
+			log.Printf("wsHandler: key: text codes %v", []byte(text))
+			if !ok {
+				log.Printf("wsHandler: key: no text, or not string: %v", m.Data["text"])
+				break
+			}
+			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
+				log.Printf("wsHandler: key: x keyboard write error: %v", err)
+				break
+			}
+			send <- r
 		default:
 			log.Printf("wsHandler: unknown type: %s", m.Type)
 		}

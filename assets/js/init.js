@@ -170,8 +170,10 @@ $(function() {
 					//log("keydown: shiftKey: "+e.shiftKey);
 					//log("keydown: metaKey: "+e.metaKey);
 
+
+					t = e.key.length > 1 ? String.fromCharCode(e.keyCode) : e.key;
 					this.elm.trigger($.Event("keyinput", {
-						text: String.fromCharCode(e.keyCode)
+						text: t
 					}));
 				}.bind(this));
 
@@ -265,6 +267,13 @@ $(function() {
 					codes += ""+e.text.charCodeAt(i);
 				}
 				log("e.text: codes: "+codes, {level: 1});
+				socket.send(JSON.stringify({
+					type: "key",
+					data: {
+						text: e.text,
+						sender: "#"+$(this).attr("id")
+					}
+				}));
 			});
 
 		};
@@ -333,8 +342,32 @@ $(function() {
 			$("#reload .reload").trigger("click");
 		};
 		socket.onmessage = function(evt) {
-			jsonData = jQuery.parseJSON(evt.data);
-			log("WebSocket read: <code>"+jsonData+"</code>");
+			m = jQuery.parseJSON(evt.data);
+			log("WebSocket read: <code>"+evt.data+"</code>");
+			if (typeof m.type != "string") {
+				log("no \"type\"");
+				return;
+			}
+			switch (m.type) {
+				case "key-confirm":
+					log("got \"key-confirm\": "+m.data.text);
+					target = $(m.data.sender);
+					pos = target.offset();
+					$("<div/>").css({
+						position: "fixed",
+						top: (3+pos.top)+"px",
+						left: (3+pos.left)+"px"
+					}).text(m.data.text)
+					.appendTo("body")
+					.animate({opacity:0, top:"-=30"}, 400, "swing", function() {
+						$(this).remove();
+						log("key-confirm animation end");
+					});
+
+					break;
+				default:
+					log("unknown \"type\": "+d.type);
+			}
 		};
 	}
 	else {
