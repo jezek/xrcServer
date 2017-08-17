@@ -2,7 +2,7 @@ function TouchButton(elm, opt) {
 	this.elm = $(elm);
 
 	this.options = Object.assign({
-		two_finger_lock: false,
+		lockable: false,
 		up_down_distance_ms: 50
 	}, this.elm.data(), opt);
 
@@ -24,7 +24,7 @@ function TouchButton(elm, opt) {
 			this.up_down_timer = null;
 		} else {
 			if (this.maxTouches == 0) {
-				if (this.options.two_finger_lock == false || !this.locked) {
+				if (this.options.lockable == false || !this.locked) {
 					//log("this.elm.trigger: touchdown");
 					this.elm.trigger("touchdown");
 				} else {
@@ -37,7 +37,7 @@ function TouchButton(elm, opt) {
 			} 
 		}
 
-		if (this.options.two_finger_lock && !this.locked) {
+		if (this.options.lockable && !this.locked) {
 			if (e.touches.length > 1) {
 				this.locked=true;
 				//log("this.elm.trigger: touchdownlock");
@@ -66,7 +66,7 @@ function TouchButton(elm, opt) {
 		if (e.touches.length == 0) {
 			//log("setTimeout");
 			this.up_down_timer = setTimeout(function() {
-				if (this.options.two_finger_lock == false || !this.locked) {
+				if (this.options.lockable == false || !this.locked) {
 					//log("this.elm.trigger: touchup");
 					this.elm.trigger("touchup");
 				}

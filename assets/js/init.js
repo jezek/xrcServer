@@ -183,10 +183,10 @@ $(function() {
 					}
 					if (now.indexOf(prev) == 0) {
 						return now.slice(prev.length);
-					} 
+					}
 					if (prev.indexOf(now) == 0) {
 							return String.fromCharCode(8).repeat(prev.length - now.length);
-					} 
+					}
 					return String.fromCharCode(8).repeat(prev.length)+now;
 				};
 
@@ -223,7 +223,7 @@ $(function() {
 					log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
 					log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
 					log("this.wasInput: "+this.wasInput, {level: 1});
-					
+
 					diff = this.textDifference(this.lastValue, this.elm.val());
 
 					if (this.wasInput) {
@@ -232,7 +232,7 @@ $(function() {
 						}
 						return;
 					}
-					
+
 					autocorrect = this.lastValue.length>1 && this.elm.val()=="";
 
 					this.lastValue = this.elm.val();
@@ -270,7 +270,7 @@ $(function() {
 				socket.send(JSON.stringify({
 					type: "key",
 					data: {
-						text: e.text,
+						text: e.text.replace("%", "%%"),
 						sender: "#"+$(this).attr("id")
 					}
 				}));
