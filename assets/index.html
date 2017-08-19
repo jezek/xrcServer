@@ -5,10 +5,12 @@
 		<meta name="viewport" content="width=device-width,user-scalable=no">
 
 		<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+		<script type="text/javascript" src="js/helpers.js"></script>
 		<script type="text/javascript" src="js/Tabs.js"></script>
 		<script type="text/javascript" src="js/TouchPad.js"></script>
 		<script type="text/javascript" src="js/TouchButton.js"></script>
 		<script type="text/javascript" src="js/KeyInput.js"></script>
+		<script type="text/javascript" src="js/KeyModifiers.js"></script>
 		<script type="text/javascript" src="js/init.js"></script>
 
 		<link rel="stylesheet" type="text/css" href="css/style.css">
@@ -31,9 +33,9 @@
 				<input id="keyinput" class="keyinput" type="text" />
 			</div>
 			<div class="row">
-				<div id="ctrl" class="touchbutton">ctrl</div>
-				<div id="alt" class="touchbutton">alt</div>
-				<div id="shift" class="touchbutton">shift</div>
+				<div id="shift" class="modifier" data-name="Shift_L">shift</div>
+				<div id="ctrl" class="modifier" data-name="Control_L">ctrl</div>
+				<div id="alt" class="modifier" data-name="Alt_L">alt</div>
 			</div>
 		</div>
 		<div id="reload" class="page">

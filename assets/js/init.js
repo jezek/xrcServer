@@ -1,16 +1,4 @@
-function log(t, opt) {
-	opt = opt || {};
-	var elm = $('<p/>');
-	if (typeof opt.color === "string") {
-		elm.css("color", opt.color);
-	}
-	if (typeof opt.level === "number") {
-		elm.css("margin-left", ""+opt.level+"em");
-	}
-	elm.html(t);
-	$("#log").append(elm);
-}
-
+//require helpers.js
 $(function() {
 	log("init");
 	var tabs = new Tabs("#header .tab");
@@ -157,6 +145,8 @@ $(function() {
 				}));
 			});
 
+			modifiers.init(socket);
+
 		};
 		socket.onclose = function(evt) {
 			log("WebSocket closed");
@@ -175,6 +165,8 @@ $(function() {
 			right.off("touchup");
 
 			keyinput.off("keyinput");
+
+			modifiers.destroy();
 
 			tabs.tabs.forEach(function(val, key) {
 				$(key).hide();
@@ -246,6 +238,10 @@ $(function() {
 						log("key-confirm animation end");
 					});
 
+					modifiers.relase();
+					break;
+				case "modifier":
+					modifiers.message(m.data);
 					break;
 				default:
 					log("unknown \"type\": "+d.type);

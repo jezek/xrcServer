@@ -1,22 +1,32 @@
+//require helpers.js, KeyModifiers.js
 function KeyInput(elm, opt) {
-	this.elm = $(elm);
+	this.elm = elm;
 
 	this.options = Object.assign({
-	}, this.elm.data(), opt);
+	}, $(this.elm).data(), opt);
 
 	this.lastValue = "";
 	this.wasInput = false;
 
-	this.elm.on("focus", function(e) {
+	$(this.elm).on("focus", function(e) {
+		log("on focus: "+xpath(this.elm), {color:"yellow"});
+		log("from: "+this.elm.from, {level: 1});
+		if (typeof(this.elm.from) == "string") {
+			delete this.elm.from;
+			return;
+		}
 		this.lastValue = "";
+	  if (typeof(modifiers) != "undefined") {
+			modifiers.focus = this.elm;
+		}
 	}.bind(this));
 
-	this.elm.on("keydown", function(e) {
+	$(this.elm).on("keydown", function(e) {
 		log("keydown", {color: "cyan"});
 		log("e.key: "+e.key, {level: 1});
 		log("e.keyCode: "+e.keyCode, {level: 1});
 		log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
-		log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+		log("$(this.elm).val(): \""+$(this.elm).val()+"\"", {level: 1});
 
 		if (e.keyCode == 229) { //Process
 			this.wasInput = false;
@@ -37,7 +47,7 @@ function KeyInput(elm, opt) {
 
 
 		t = e.key.length > 1 ? String.fromCharCode(e.keyCode) : e.key;
-		this.elm.trigger($.Event("keyinput", {
+		$(this.elm).trigger($.Event("keyinput", {
 			text: t
 		}));
 	}.bind(this));
@@ -55,24 +65,24 @@ function KeyInput(elm, opt) {
 		return String.fromCharCode(8).repeat(prev.length)+now;
 	};
 
-	this.elm.on("input", function(e) {
+	$(this.elm).on("input", function(e) {
 		log("input", {color: "lightblue"});
 		log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
-		log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+		log("$(this.elm).val(): \""+$(this.elm).val()+"\"", {level: 1});
 
 		this.wasInput = true;
 
-		diff = this.textDifference(this.lastValue, this.elm.val());
-		replaced = this.elm.val().indexOf(this.lastValue) != 0 && this.lastValue.indexOf(this.elm.val()) != 0;
+		diff = this.textDifference(this.lastValue, $(this.elm).val());
+		replaced = $(this.elm).val().indexOf(this.lastValue) != 0 && this.lastValue.indexOf($(this.elm).val()) != 0;
 		log("replaced: "+replaced, {level: 1});
-		this.lastValue = this.elm.val();
-		this.elm.val("");
+		this.lastValue = $(this.elm).val();
+		$(this.elm).val("");
 		if (diff === "") {
 			this.lastValue="";
 			return;
 		}
 
-		this.elm.trigger($.Event("keyinput", {
+		$(this.elm).trigger($.Event("keyinput", {
 			text: diff
 		}));
 		if (diff === " " || replaced) {
@@ -81,15 +91,15 @@ function KeyInput(elm, opt) {
 		}
 	}.bind(this));
 
-	this.elm.on("keyup", function(e) {
+	$(this.elm).on("keyup", function(e) {
 		log("keypup", {color: "lightblue"});
 		log("e.key: "+e.key, {level: 1});
 		log("e.keyCode: "+e.keyCode, {level: 1});
 		log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
-		log("this.elm.val(): \""+this.elm.val()+"\"", {level: 1});
+		log("$(this.elm).val(): \""+$(this.elm).val()+"\"", {level: 1});
 		log("this.wasInput: "+this.wasInput, {level: 1});
 
-		diff = this.textDifference(this.lastValue, this.elm.val());
+		diff = this.textDifference(this.lastValue, $(this.elm).val());
 
 		if (this.wasInput) {
 			if (diff == " ") {
@@ -98,16 +108,16 @@ function KeyInput(elm, opt) {
 			return;
 		}
 
-		autocorrect = this.lastValue.length>1 && this.elm.val()=="";
+		autocorrect = this.lastValue.length>1 && $(this.elm).val()=="";
 
-		this.lastValue = this.elm.val();
-		this.elm.val("");
+		this.lastValue = $(this.elm).val();
+		$(this.elm).val("");
 
 		if (diff === "" || autocorrect) {
 			return;
 		}
 
-		this.elm.trigger($.Event("keyinput", {
+		$(this.elm).trigger($.Event("keyinput", {
 			text: diff
 		}));
 

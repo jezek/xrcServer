@@ -60,15 +60,18 @@ div.page {
 	right:0;
 }
 
-.touchbutton {
+.touchbutton,
+.modifier {
 	border: 1px solid gray;
 }
 
-.touchbutton.down {
+.touchbutton.down,
+.modifier.down {
 	background-color: green;
 }
 
-.touchbutton.locked {
+.touchbutton.locked,
+.modifier.locked {
 	border: 2px solid red;
 }
 
@@ -121,11 +124,11 @@ div.page {
 	align-items: center;
 }
 
-#ctrl {
+/*TODO use grid*/
+#shift {
 	margin-left: 0;
 }
-
-#shift {
+#alt {
 	margin-right: 0;
 }
 

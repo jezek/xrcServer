@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -153,6 +154,29 @@ func wsHandler(ws *websocket.Conn) {
 				break
 			}
 			send <- r
+		case "modifier":
+			log.Printf("wsHandler: modifier: %v", m.Data)
+			name, ok := m.Data["name"].(string)
+			if !ok {
+				log.Printf("wsHandler: modifier: no name, or not string: %v", m.Data["name"])
+				break
+			}
+			down, ok := m.Data["down"].(bool)
+			if !ok {
+				log.Printf("wsHandler: modifier: no down, or not bool: %v", m.Data["down"])
+				break
+			}
+			s := "-"
+			if down {
+				s = "+"
+			}
+			text := fmt.Sprintf("%%%s%%\"%s\"", s, name)
+			log.Printf("wsHandler: modifier: text %s", text)
+			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
+				log.Printf("wsHandler: modifier: x keyboard write error: %v", err)
+				break
+			}
+			send <- []byte(msg)
 		default:
 			log.Printf("wsHandler: unknown type: %s", m.Type)
 		}
