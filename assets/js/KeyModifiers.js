@@ -56,31 +56,34 @@ function modifier(socket, name) {
 	this.name = name;
 	this.down = false;
 	this.elements = [];
+	this.onclick = function(e) {
+		e.preventDefault();
+		log("modifier "+this.name+" on click", {color:"lightgreen"});
+		this.socket.send(JSON.stringify({
+			type: "modifier",
+			data: {
+				name: this.name,
+				down: !this.down
+			}
+		}));
+		//TODO use keyInput objet to handle focus
+		if (modifiers.focus != null) {
+			//can't pass additional params to focus event
+			//use element params
+			modifiers.focus.from = "modifier";
+			$(modifiers.focus).focus();
+		}
+	};
 	this.add = function(elm) {
 		log("modifier "+this.name+" add element: "+xpath(elm));
-		$(elm).on("click", function(e) {
-			log("modifier "+this.name+" click");
-			this.socket.send(JSON.stringify({
-				type: "modifier",
-				data: {
-					name: this.name,
-					down: !this.down
-				}
-			}));
-			if (modifiers.focus != null) {
-				//can't pass additional params to focus event
-				//use element params
-				modifiers.focus.from = "modifier";
-				$(modifiers.focus).focus();
-			}
-		}.bind(this));
+		$(elm).on("click.modifier", this.onclick.bind(this));
 		this.elements.push(elm);
 	};
 	this.destroy = function() {
 		log("modifier "+this.name+" destroy");
 		$(this.elements).each(function(){
 			log("off click: "+xpath(this), {level:1});
-			$(this).off("click");
+			$(this).off("click.modifier");
 		});
 	};
 	this.message = function(msg) {
@@ -93,7 +96,7 @@ function modifier(socket, name) {
 			$(this.elements).addClass("down");
 			return;
 		}
-			$(this.elements).removeClass("down");
+		$(this.elements).removeClass("down");
 	};
 	this.relase = function() {
 		log("modifier "+this.name+" relase");

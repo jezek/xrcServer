@@ -137,7 +137,7 @@ $(function() {
 				}
 				log("e.text: codes: "+codes, {level: 1});
 				socket.send(JSON.stringify({
-					type: "key",
+					type: "keyinput",
 					data: {
 						text: e.text.replace("%", "%%"),
 						sender: "#"+$(this).attr("id")
@@ -146,6 +146,7 @@ $(function() {
 			});
 
 			modifiers.init(socket);
+			keys.init(socket);
 
 		};
 		socket.onclose = function(evt) {
@@ -167,6 +168,7 @@ $(function() {
 			keyinput.off("keyinput");
 
 			modifiers.destroy();
+			keys.destroy();
 
 			tabs.tabs.forEach(function(val, key) {
 				$(key).hide();
@@ -219,12 +221,17 @@ $(function() {
 			m = jQuery.parseJSON(evt.data);
 			log("WebSocket read: <code>"+evt.data+"</code>");
 			if (typeof m.type != "string") {
-				log("no \"type\"");
+				log("no \"type\" in message", {level:1});
 				return;
 			}
 			switch (m.type) {
-				case "key-confirm":
-					log("got \"key-confirm\": "+m.data.text);
+				case "keyinput":
+					//TODO keyinput.message(m.data)
+					log("got \"keyinput\": "+m.data.text, {level:1});
+					if (typeof(m.data.sender) != "string") {
+						log("no \"data.sender\" in message", {level:1});
+						return;
+					}
 					target = $(m.data.sender);
 					pos = target.offset();
 					$("<div/>").css({
@@ -232,15 +239,19 @@ $(function() {
 						top: (3+pos.top)+"px",
 						left: (3+pos.left)+"px"
 					}).text(m.data.text)
-					.appendTo("body")
-					.animate({opacity:0, top:"-=30"}, 400, "swing", function() {
-						$(this).remove();
-						log("key-confirm animation end");
-					});
+						.appendTo("body")
+						.animate({opacity:0, top:"-=30"}, 400, "swing", function() {
+							$(this).remove();
+						});
 
 					modifiers.relase();
 					break;
+				case "key":
+					log("got \"key\": "+m.data.name, {level:1});
+					keys.message(m.data);
+					break;
 				case "modifier":
+					log("got \"modifier\": "+m.data.name, {level:1});
 					modifiers.message(m.data);
 					break;
 				default:

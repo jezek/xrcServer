@@ -135,14 +135,8 @@ func wsHandler(ws *websocket.Conn) {
 			default:
 				log.Printf("wsHandler: scroll: %s unknown", dir)
 			}
-		case "key":
-			log.Printf("wsHandler: key: %v", m.Data)
-			m.Type = "key-confirm"
-			r, err := json.Marshal(m)
-			if err != nil {
-				log.Printf("wsHandler: key: marshal error: %s", err)
-				break
-			}
+		case "keyinput":
+			log.Printf("wsHandler: keyinput: %v", m.Data)
 			text, ok := m.Data["text"].(string)
 			log.Printf("wsHandler: key: text codes %v", []byte(text))
 			if !ok {
@@ -153,17 +147,17 @@ func wsHandler(ws *websocket.Conn) {
 				log.Printf("wsHandler: key: x keyboard write error: %v", err)
 				break
 			}
-			send <- r
-		case "modifier":
-			log.Printf("wsHandler: modifier: %v", m.Data)
+			send <- []byte(msg)
+		case "modifier", "key":
+			log.Printf("wsHandler: %s: %v", m.Type, m.Data)
 			name, ok := m.Data["name"].(string)
 			if !ok {
-				log.Printf("wsHandler: modifier: no name, or not string: %v", m.Data["name"])
+				log.Printf("wsHandler: %s: no name, or not string: %v", m.Type, m.Data["name"])
 				break
 			}
 			down, ok := m.Data["down"].(bool)
 			if !ok {
-				log.Printf("wsHandler: modifier: no down, or not bool: %v", m.Data["down"])
+				log.Printf("wsHandler: %s: no down, or not bool: %v", m.Type, m.Data["down"])
 				break
 			}
 			s := "-"
@@ -171,9 +165,9 @@ func wsHandler(ws *websocket.Conn) {
 				s = "+"
 			}
 			text := fmt.Sprintf("%%%s%%\"%s\"", s, name)
-			log.Printf("wsHandler: modifier: text %s", text)
+			log.Printf("wsHandler: %s: text %s", m.Type, text)
 			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
-				log.Printf("wsHandler: modifier: x keyboard write error: %v", err)
+				log.Printf("wsHandler: %s: x keyboard write error: %v", m.Type, err)
 				break
 			}
 			send <- []byte(msg)

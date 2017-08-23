@@ -60,18 +60,15 @@ div.page {
 	right:0;
 }
 
-.touchbutton,
-.modifier {
+.button {
 	border: 1px solid gray;
 }
 
-.touchbutton.down,
-.modifier.down {
+.button.down {
 	background-color: green;
 }
 
-.touchbutton.locked,
-.modifier.locked {
+.button.locked {
 	border: 2px solid red;
 }
 
@@ -97,39 +94,31 @@ div.page {
 
 #keypage .row {
 	min-height: 3em;
-	width:96%;
-	padding: 0 2%;
 	display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
 	text-align: center;
 }
 
-#keypage input.keyinput {
-	box-sizing: border-box;
-	width: 100%;
+#keypage .row .button {
 	height: 2em;
-	background:	black;
-	color: white;
-}
-
-#ctrl, #alt, #shift {
+	margin: 0 1em;
+	flex-grow:1;
 	display: flex;
 	box-sizing: border-box;
-	width: 30%;
-	height: 2em;
-	margin: 0 2.5%;
 	justify-content: center;
 	text-align: center;
 	align-items: center;
 }
 
-/*TODO use grid*/
-#shift {
-	margin-left: 0;
-}
-#alt {
-	margin-right: 0;
+#keypage input.keyinput {
+	box-sizing: border-box;
+	flex-grow:1;
+	margin:0 1em;
+	height: 2em;
+	background:	black;
+	color: white;
 }
 
 #reload {

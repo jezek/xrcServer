@@ -11,6 +11,7 @@
 		<script type="text/javascript" src="js/TouchButton.js"></script>
 		<script type="text/javascript" src="js/KeyInput.js"></script>
 		<script type="text/javascript" src="js/KeyModifiers.js"></script>
+		<script type="text/javascript" src="js/Keys.js"></script>
 		<script type="text/javascript" src="js/init.js"></script>
 
 		<link rel="stylesheet" type="text/css" href="css/style.css">
@@ -25,17 +26,23 @@
 		</div>
 		<div id="touchpage" class="page">
 			<div id="touchpad" class="touchpad"></div>
-			<div id="button_left" class="touchbutton" data-lockable="true"></div>
-			<div id="button_right" class="touchbutton"></div>
+			<div id="button_left" class="button touchbutton" data-lockable="true"></div>
+			<div id="button_right" class="button touchbutton"></div>
 		</div>
 		<div id="keypage" class="page">
 			<div class="row">
 				<input id="keyinput" class="keyinput" type="text" />
 			</div>
 			<div class="row">
-				<div id="shift" class="modifier" data-name="Shift_L">shift</div>
-				<div id="ctrl" class="modifier" data-name="Control_L">ctrl</div>
-				<div id="alt" class="modifier" data-name="Alt_L">alt</div>
+				<div id="shift" class="button modifier" data-name="Shift_L">shift</div>
+				<div id="ctrl" class="button modifier" data-name="Control_L">ctrl</div>
+				<div id="alt" class="button modifier" data-name="Alt_L">alt</div>
+			</div>
+			<div class="row">
+				<div class="button key" data-name="Escape">esc</div>
+				<div class="button key" data-name="Tab">tab</div>
+				<div class="button key" data-name="Insert">ins</div>
+				<div class="button key" data-name="Delete">del</div>
 			</div>
 		</div>
 		<div id="reload" class="page">
