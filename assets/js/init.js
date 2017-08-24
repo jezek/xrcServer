@@ -126,7 +126,7 @@ $(function() {
 			// keyinput
 
 			keyinput.on("keyinput", function(e) {
-				log("keyinput", {color: "red"});
+				log("keyinput", {color: "blue"});
 				log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
 				var codes="";
 				for (i=0; i<e.text.length; i++) {

@@ -9,7 +9,7 @@ modifiers.init = function(socket) {
 	log("init modifiers");
 	this.socket = socket;
 
-	$(".modifier").each(function() {
+	$("button.modifier").each(function() {
 		modifiers.add(this);
 	});
 };

@@ -8,7 +8,7 @@ keys.init = function(socket) {
 	log("init keys");
 	this.socket = socket;
 
-	$(".key").each(function() {
+	$("button.key").each(function() {
 		keys.add(this);
 	});
 };
@@ -47,7 +47,7 @@ function key(socket, name) {
 	this.socket = socket;
 	this.name = name;
 	this.elements = [];
-	this.down = false;
+	this.downCount = 0;
 	this.sendKey = function(keysym, down) {
 		this.socket.send(JSON.stringify({
 			type: "key",
@@ -60,11 +60,27 @@ function key(socket, name) {
 	this.ondown = function(e) {
 		e.preventDefault();
 		log("key "+this.name+" on down", {color:"lightgreen"});
+		this.downCount++;
+		if (this.downCount > 1) {
+			log("allready pressed", {level:1});
+			return;
+		}
+		$(this.elements).addClass("pressed");
 		this.sendKey(this.name, true);
 	};
 	this.onup = function(e) {
 		e.preventDefault();
 		log("key "+this.name+" on up", {color:"lightgreen"});
+		this.downCount--;
+		if (this.downCount > 0) {
+			log("still pressed", {level:1});
+			return;
+		}
+		if (this.downCount < 0) {
+			log("more relased then pressed", {level:1, color:"red"});
+			this.downCount=0;
+		}
+		$(this.elements).removeClass("pressed");
 		this.sendKey(this.name, false);
 
 		if (typeof(modifiers) != "undefined") {
@@ -80,10 +96,10 @@ function key(socket, name) {
 	this.add = function(elm) {
 		log("key "+this.name+" add element: "+xpath(elm));
 		$(elm)
-			.on("touchdown.key", this.ondown.bind(this))
-			.on("touchup.key", this.onup.bind(this))
-			.on("mousedown.key", this.ondown.bind(this))
-			.on("mouseup.key", this.onup.bind(this));
+			.on("touchstart.key", this.ondown.bind(this))
+			.on("touchend.key", this.onup.bind(this));
+			//.on("mousedown.key", this.ondown.bind(this))
+			//.on("mouseup.key", this.onup.bind(this));
 		this.elements.push(elm);
 	};
 	this.destroy = function() {
@@ -91,16 +107,17 @@ function key(socket, name) {
 		$(this.elements).each(function(){
 			log("off: "+xpath(this), {level:1});
 			$(this)
-				.off("touchdown.key")
-				.off("touchup.key")
-				.off("mousedown.key")
-				.off("mouseup.key");
+				.off("touchstart.key")
+				.off("touchend.key");
+				//.off("mousedown.key")
+				//.off("mouseup.key");
 		});
 	};
 	this.message = function(msg) {
 		log("key "+this.name+" message: "+JSON.stringify(msg));
 		if (typeof(msg.down) != "boolean") {
 			log("message down is not boolean: "+typeof(msg.down), {level:1, color: "red"});
+			return;
 		}
 		this.down = msg.down;
 		if (this.down) {

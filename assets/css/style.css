@@ -60,16 +60,24 @@ div.page {
 	right:0;
 }
 
-.button {
-	border: 1px solid gray;
+button, .button {
+	background: black;
+	color: white;
+	border: 1px outset gray;
+	user-select: none;
 }
 
-.button.down {
+button.down, .button.down {
 	background-color: green;
+	border-style: inset;
 }
 
-.button.locked {
-	border: 2px solid red;
+button.pressed, .button.pressed {
+	border-style: inset;
+}
+
+button.locked, .button.locked {
+	border: 2px inset red;
 }
 
 #button_left {
@@ -101,7 +109,7 @@ div.page {
 	text-align: center;
 }
 
-#keypage .row .button {
+#keypage .row button {
 	height: 2em;
 	margin: 0 1em;
 	flex-grow:1;
