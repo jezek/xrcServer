@@ -13,6 +13,7 @@ body {
 	height: 2em;
 	border-bottom: 1px solid white;
 	background: black;
+	z-index: 1;
 }
 
 a {
@@ -36,6 +37,7 @@ a {
 div.page {
 	display: none;
 	margin-top: 2em;
+	z-index:0;
 }
 
 #touchpage {
@@ -63,7 +65,10 @@ div.page {
 button, .button {
 	background: black;
 	color: white;
+	box-sizing: border-box;
 	border: 1px outset gray;
+	padding:0;
+	margin:0;
 	user-select: none;
 }
 
@@ -100,34 +105,100 @@ button.locked, .button.locked {
 	padding-top: 0.5em;
 }
 
-#keypage .row {
-	min-height: 3em;
-	display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-	text-align: center;
+#keypage .container {
+	width: 90vw;
+	max-width: 9cm;
+	height: 15vw;
+	max-height: 1.5cm;
+	display: block;
+	position: relative;
 }
 
-#keypage .row button {
-	height: 2em;
-	margin: 0 1em;
-	flex-grow:1;
-	display: flex;
-	box-sizing: border-box;
-	justify-content: center;
-	text-align: center;
-	align-items: center;
+#keypage button.modifier {
+	min-width : 2cm;
+	min-height: 1cm;
+}
+#keypage button.key {
+	min-width : 1cm;
+	min-height: 1cm;
 }
 
-#keypage input.keyinput {
-	box-sizing: border-box;
-	flex-grow:1;
-	margin:0 1em;
-	height: 2em;
+#keypage .group {
+	overflow: hidden;
+	position: absolute;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+
+#keypage .group.input {
+	top: 0;
+	left: 0;
+	width: 33%;
+	height: 200%;
+}
+#keypage .group.input input.keyinput {
+	width: 100%;
+	height: 100%;
 	background:	black;
-	color: white;
+	color: transparent;
+	text-align: center;
 }
+
+#keypage .group.modifiers {
+	top: 0;
+	left: 33%;
+	width: 67%;
+	height: 200%;
+}
+#keypage .group.modifiers button.modifier {
+	width:50%;
+	height:50%;
+}
+
+#keypage .group.etid {
+	top: 200%;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+#keypage .group.etid button.key {
+	width:25%;
+	height:100%;
+}
+
+#keypage .group.navigations {
+	top: 300%;
+	left: 0;
+	width: 100%;
+	height: 200%;
+}
+#keypage .group.navigations button.key {
+	width:25%;
+	height:50%;
+}
+
+#keypage .group.function {
+	top: 500%;
+	left: 0;
+	width: 100%;
+	height: 200%;
+}
+#keypage .group.function button.key {
+	width: 16.5%;
+	height: 50%;
+}	
+
+#keypage .group.media {
+	top: 700%;
+	left: 0;
+	width: 100%;
+	height: 200%;
+}
+#keypage .group.media button.key {
+	width: 12.5%;
+	height: 50%;
+}	
 
 #reload {
 	position: fixed;

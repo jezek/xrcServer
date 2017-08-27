@@ -4,8 +4,7 @@ $(function() {
 	var tabs = new Tabs("#header .tab");
 
 	$(tabs.pages.keypage.header).on("select", function(e) {
-		//log("keypage selected");
-		$("#keypage input.keyinput").focus();
+		keyinputs.focus("keypage", {clear: true});
 	});
 
 	$("#logpage .clear").on("click", function(e) {
@@ -24,7 +23,6 @@ $(function() {
 		var pad = $("#touchpad");
 		var left = $("#button_left");
 		var right = $("#button_right");
-		var keyinput = $("#keypage input.keyinput");
 
 		var socket = new window.WebSocket("ws://"+window.location.host+"/ws");
 		socket.onopen = function(evt) {
@@ -123,28 +121,7 @@ $(function() {
 			});
 
 
-			// keyinput
-
-			keyinput.on("keyinput", function(e) {
-				log("keyinput", {color: "blue"});
-				log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
-				var codes="";
-				for (i=0; i<e.text.length; i++) {
-					if (codes != "") {
-						codes +=",";
-					}
-					codes += ""+e.text.charCodeAt(i);
-				}
-				log("e.text: codes: "+codes, {level: 1});
-				socket.send(JSON.stringify({
-					type: "keyinput",
-					data: {
-						text: e.text.replace("%", "%%"),
-						sender: "#"+$(this).attr("id")
-					}
-				}));
-			});
-
+			keyinputs.init(socket);
 			modifiers.init(socket);
 			keys.init(socket);
 
@@ -165,8 +142,7 @@ $(function() {
 			right.off("touchdown");
 			right.off("touchup");
 
-			keyinput.off("keyinput");
-
+			keyinputs.destroy();
 			modifiers.destroy();
 			keys.destroy();
 
@@ -226,25 +202,8 @@ $(function() {
 			}
 			switch (m.type) {
 				case "keyinput":
-					//TODO keyinput.message(m.data)
 					log("got \"keyinput\": "+m.data.text, {level:1});
-					if (typeof(m.data.sender) != "string") {
-						log("no \"data.sender\" in message", {level:1});
-						return;
-					}
-					target = $(m.data.sender);
-					pos = target.offset();
-					$("<div/>").css({
-						position: "fixed",
-						top: (3+pos.top)+"px",
-						left: (3+pos.left)+"px"
-					}).text(m.data.text)
-						.appendTo("body")
-						.animate({opacity:0, top:"-=30"}, 400, "swing", function() {
-							$(this).remove();
-						});
-
-					modifiers.relase();
+					keyinputs.message(m.data);
 					break;
 				case "key":
 					log("got \"key\": "+m.data.name, {level:1});

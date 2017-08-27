@@ -39,6 +39,7 @@ modifiers.message = function(msg) {
 	log("modifiers message");
 	if (typeof(this.modifier[msg.name]) == "undefined") {
 		log("unknown name: "+msg.name, {level:1, color: "red"});
+		return;
 	}
 	this.modifier[msg.name].message(msg);
 };
@@ -66,13 +67,6 @@ function modifier(socket, name) {
 				down: !this.down
 			}
 		}));
-		//TODO use keyInput objet to handle focus
-		if (modifiers.focus != null) {
-			//can't pass additional params to focus event
-			//use element params
-			modifiers.focus.from = "modifier";
-			$(modifiers.focus).focus();
-		}
 	};
 	this.add = function(elm) {
 		log("modifier "+this.name+" add element: "+xpath(elm));

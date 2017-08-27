@@ -1,27 +1,90 @@
-//require helpers.js, KeyModifiers.js
-function KeyInput(elm, opt) {
+//require helpers.js
+var keyinputs = {
+	socket: null,
+	keyinput: {},
+	focused: null
+};
+
+keyinputs.init = function(socket) {
+	log("init keyinputs");
+	this.socket = socket;
+
+	$("input.keyinput").each(function() {
+		keyinputs.add(this);
+	});
+};
+
+keyinputs.add = function(elm) {
+	log("keyinputs add "+xpath(elm));
+	data = $(elm).data();
+	if (typeof(data.name) != "string" || data.name=="") {
+		data.name = Object.keys(this.keyinput).length + 1;
+	}
+	if (typeof(this.keyinput[data.name]) != "undefined") {
+		log("duplicate name: "+data.name);
+		return;
+	}
+	this.keyinput[data.name] = new keyinput(this.socket, elm, data.name);
+};
+
+keyinputs.destroy = function() {
+	log("keyinputs.destroy()");
+	for (var name in this.keyinput) {
+		this.keyinput[name].destroy();
+		delete this.keyinput[name];
+	}
+};
+
+keyinputs.message = function(msg) {
+	log("keyinputs message");
+	if (typeof(this.keyinput[msg.sender]) == "undefined") {
+		log("unknown sender: "+msg.sender, {level:1, color: "red"});
+	}
+	this.keyinput[msg.sender].message(msg);
+};
+
+keyinputs.focus = function(name, opt) {
+	log("keyinputs focus: "+name, {color:"orange"});
+	log("opt: "+JSON.stringify(opt), {level:1});
+	if (typeof(this.keyinput[name]) == "undefined") {
+		log("unknown name", {level:1});
+		return;
+	}
+	if (this.focused == name) {
+		log("allreay focused", {level:1});
+		return;
+	}
+	if (this.focused != null) {
+		this.keyinput[this.focused].unfocus();
+	}
+	this.focused = name;
+	this.keyinput[name].focus(opt);
+};
+
+keyinputs.unfocus = function() {
+	log("keyinputs unfocus", {color:"brown"});
+	if (this.focused == null) {
+		log("allready unfocused", {level:1});
+		return;
+	}
+	this.keyinput[this.focused].unfocus();
+	this.focused = null;
+};
+
+function keyinput(socket, elm, name, opt) {
+	log("new keyinput: "+name, {color: "pink"});
+	this.socket = socket;
 	this.elm = elm;
+	this.name = name;
 
 	this.options = Object.assign({
+		autorefocus: true
 	}, $(this.elm).data(), opt);
 
 	this.lastValue = "";
 	this.wasInput = false;
 
-	$(this.elm).on("focus", function(e) {
-		log("on focus: "+xpath(this.elm), {color:"yellow"});
-		log("from: "+this.elm.from, {level: 1});
-		if (typeof(this.elm.from) == "string") {
-			delete this.elm.from;
-			return;
-		}
-		this.lastValue = "";
-	  if (typeof(modifiers) != "undefined") {
-			modifiers.focus = this.elm;
-		}
-	}.bind(this));
-
-	$(this.elm).on("keydown", function(e) {
+	$(this.elm).on("keydown.keyinput", function(e) {
 		log("keydown", {color: "cyan"});
 		log("e.key: "+e.key, {level: 1});
 		log("e.keyCode: "+e.keyCode, {level: 1});
@@ -65,7 +128,7 @@ function KeyInput(elm, opt) {
 		return String.fromCharCode(8).repeat(prev.length)+now;
 	};
 
-	$(this.elm).on("input", function(e) {
+	$(this.elm).on("input.keyinput", function(e) {
 		log("input", {color: "lightblue"});
 		log("this.lastValue: \""+this.lastValue+"\"", {level: 1});
 		log("$(this.elm).val(): \""+$(this.elm).val()+"\"", {level: 1});
@@ -91,7 +154,7 @@ function KeyInput(elm, opt) {
 		}
 	}.bind(this));
 
-	$(this.elm).on("keyup", function(e) {
+	$(this.elm).on("keyup.keyinput", function(e) {
 		log("keypup", {color: "lightblue"});
 		log("e.key: "+e.key, {level: 1});
 		log("e.keyCode: "+e.keyCode, {level: 1});
@@ -122,10 +185,101 @@ function KeyInput(elm, opt) {
 		}));
 
 	}.bind(this));
-}
 
-$(function() {
-	$("input.keyinput").each(function() {
-		this.keyinput = new KeyInput(this);
-	});
-});
+	$(this.elm).on("keyinput", function(e) {
+		log("keyinput", {color: "blue"});
+		log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
+		var codes="";
+		for (i=0; i<e.text.length; i++) {
+			if (codes != "") {
+				codes +=",";
+			}
+			codes += ""+e.text.charCodeAt(i);
+		}
+		log("e.text: codes: "+codes, {level: 1});
+		this.socket.send(JSON.stringify({
+			type: "keyinput",
+			data: {
+				text: e.text.replace("%", "%%"),
+				sender: this.name
+			}
+		}));
+	}.bind(this));
+
+	this.destroy = function() {
+		log("keyinput "+this.name+" destroy");
+			$(this.elm)
+				.off("keyup.keyinput")
+				.off("input.keyinput")
+				.off("keydown.keyinput")
+				.off("focus.keyinput")
+				.off("focusout.keyinput")
+				.off("keyinput");
+	};
+
+	this.message = function(msg) {
+		pos = $(this.elm).position();
+		$("<div/>").css({
+			position: "absolute",
+			top: pos.top+"px",
+			left: pos.left+"px",
+			width: $(this.elm).outerWidth()+"px",
+			height: $(this.elm).outerHeight()+"px",
+			display: "flex",
+			"justify-content": "center",
+			"align-content": "center",
+			"align-items": "center"
+		}).text(m.data.text)
+			.appendTo($(this.elm).parent())
+			.animate({opacity:0}, 400, "swing", function() {
+				$(this).remove();
+			});
+		if (typeof(modifiers) != "undefined") {
+			modifiers.relase();
+		}
+	};
+
+	this.placeholder = null;
+
+	this.focus = function(opt) {
+		log("keyinput focus: "+this.name, {color:"orange"});
+		log("opt: "+JSON.stringify(opt), {level:1});
+		if (typeof(opt) != "undefined" && typeof(opt.clear) == "boolean") {
+			this.lastValue = "";
+		}
+		$(this.elm)
+			.off("focusout.keyinput")
+			.on("focusout.keyinput", function(e) {
+				log("keyinput on focusout: "+this.name, {color:"yellow"});
+				if ($(this.elm).is(":visible") == false) {
+					log("element is hidden", {level:1});
+					keyinputs.unfocus();
+					return;
+				}
+				keyinputs.unfocus();
+				if (this.options.autorefocus == true) {
+					log("autorefocus", {level:1});
+					$(this.elm).focus();
+					return;
+				}
+			}.bind(this));
+		if (typeof(opt) == "undefined" || typeof(opt.onfocus) == "undefined") {
+			$(this.elm).focus();
+		}
+	};
+
+	this.unfocus = function() {
+		log("keyinput unfocus: "+this.name, {color:"brown"});
+		$(this.elm).off("focusout.keyinput");
+		$(this.elm).attr("placeholder",this.placeholder);
+		this.placeholder = null;
+	};
+
+	$(this.elm).on("focus.keyinput", function(e) {
+		log("keyinput on focus: "+this.name, {color:"yellow"});
+		this.placeholder = $(this.elm).attr("placeholder");
+		$(this.elm).attr("placeholder","");
+		keyinputs.focus(this.name, {onfocus: true});
+	}.bind(this));
+
+}

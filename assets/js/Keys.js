@@ -38,6 +38,7 @@ keys.message = function(msg) {
 	log("keys message");
 	if (typeof(this.key[msg.name]) == "undefined") {
 		log("unknown name: "+msg.name, {level:1, color: "red"});
+		return;
 	}
 	this.key[msg.name].message(msg);
 };
@@ -83,15 +84,6 @@ function key(socket, name) {
 		$(this.elements).removeClass("pressed");
 		this.sendKey(this.name, false);
 
-		if (typeof(modifiers) != "undefined") {
-			if (modifiers.focus != null) {
-				//TODO use keyInput objet to handle focus
-				//can't pass additional params to focus event
-				//use element params
-				modifiers.focus.from = "key";
-				$(modifiers.focus).focus();
-			}
-		}
 	};
 	this.add = function(elm) {
 		log("key "+this.name+" add element: "+xpath(elm));

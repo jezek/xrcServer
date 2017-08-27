@@ -30,19 +30,64 @@
 			<div id="button_right" class="button touchbutton"></div>
 		</div>
 		<div id="keypage" class="page">
-			<div class="row">
-				<input id="keyinput" class="keyinput" type="text" />
-			</div>
-			<div class="row">
-				<button class="modifier" data-name="Shift_L">shift</button>
-				<button class="modifier" data-name="Control_L">ctrl</button>
-				<button class="modifier" data-name="Alt_L">alt</button>
-			</div>
-			<div class="row">
-				<button class="key" data-name="Escape">esc</button>
-				<button class="key" data-name="Tab">tab</button>
-				<button class="key" data-name="Insert">ins</button>
-				<button class="key" data-name="Delete">del</button>
+			<div class="container">
+				<div class="group input">
+					<input id="keyinput" class="keyinput" type="text" data-name="keypage" placeholder="tap to write" data-autorefocus="true"/>
+				</div>
+				<div class="group modifiers">
+					<button class="modifier" data-name="Shift_L">shift</button>
+					<button class="modifier" data-name="Control_L">ctrl</button>
+					<button class="modifier" data-name="Alt_L">alt</button>
+					<button class="modifier" data-name="Super_L">super</button>
+				</div>
+				<div class="group etid">
+					<button class="key" data-name="Escape">esc</button>
+					<button class="key" data-name="Tab">tab</button>
+					<button class="key" data-name="Insert">ins</button>
+					<button class="key" data-name="Delete">del</button>
+				</div>
+				<div class="group navigations">
+					<button class="key" data-name="Home">home</button>
+					<button class="key" data-name="Up">up</button>
+					<button class="key" data-name="End">del</button>
+					<button class="key" data-name="Page_Up">pgUp</button>
+					<button class="key" data-name="Left">left</button>
+					<button class="key" data-name="Down">down</button>
+					<button class="key" data-name="Right">right</button>
+					<button class="key" data-name="Page_Down">pgDown</button>
+				</div>
+				<div class="group function">
+					<button class="key" data-name="F1">F1</button>
+					<button class="key" data-name="F2">F2</button>
+					<button class="key" data-name="F3">F3</button>
+					<button class="key" data-name="F4">F4</button>
+					<button class="key" data-name="F5">F5</button>
+					<button class="key" data-name="F6">F6</button>
+					<button class="key" data-name="F7">F7</button>
+					<button class="key" data-name="F8">F8</button>
+					<button class="key" data-name="F9">F9</button>
+					<button class="key" data-name="F10">F10</button>
+					<button class="key" data-name="F11">F11</button>
+					<button class="key" data-name="F12">F12</button>
+				</div>
+				<div class="group media">
+					<button class="key" data-name="XF86AudioPrev">prev</button>
+					<button class="key" data-name="XF86AudioRewind">rewind</button>
+					<button class="key" data-name="XF86AudioPlay">play</button>
+					<button class="key" data-name="XF86AudioPause">pause</button>
+					<button class="key" data-name="XF86AudioStop">stop</button>
+					<button class="key" data-name="XF86AudioForward">forward</button>
+					<button class="key" data-name="XF86AudioNext">next</button>
+					<button class="key" data-name="XF86Music">music</button>
+					<button class="key" data-name="XF86AudioMute">mute</button>
+					<button class="key" data-name="XF86AudioLowerVolume">volDown</button>
+					<button class="key" data-name="XF86AudioRaiseVolume">volUp</button>
+					<button class="key" data-name="XF86AudioRepeat">repeat</button>
+					<button class="key" data-name="XF86AudioRandomPlay">random</button>
+					<button class="key" data-name="XF86AudioCycleTrack">cycle</button>
+					<button class="key" data-name="XF86AudioMedia">media</button>
+					<button class="key" data-name="XF86AudioMicMute">micMute</button>
+				</div>
 			</div>
 		</div>
 		<div id="reload" class="page">
