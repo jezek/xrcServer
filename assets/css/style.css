@@ -106,8 +106,8 @@ button.locked, .button.locked {
 }
 
 #keypage .container {
-	width: 90vw;
-	max-width: 9cm;
+	width: 100vw;
+	max-width: 10cm;
 	height: 15vw;
 	max-height: 1.5cm;
 	display: block;
@@ -232,4 +232,30 @@ button.locked, .button.locked {
 #log p {
 	margin:0;
 	font-size: 75%;
+}
+
+/*ttc testing*/
+#ttcpage p {
+	margin:0;
+}
+#ttcpage .outer {
+	box-sizing: border-box;
+	width : 8cm;
+	height: 8cm;
+	border: 1px outset white;
+	margin: auto;
+	user-select: none;
+}
+#ttcpage .inner {
+	box-sizing: border-box;
+	width : 4cm;
+	height: 4cm;
+	border: 1px outset white;
+	position:relative;
+	left: 2cm;
+	user-select: none;
+}
+#ttcpage .outer.down,
+#ttcpage .inner.down {
+	border: 1px inset white;
 }

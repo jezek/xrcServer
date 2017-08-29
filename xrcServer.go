@@ -143,7 +143,7 @@ func wsHandler(ws *websocket.Conn) {
 				log.Printf("wsHandler: key: no text, or not string: %v", m.Data["text"])
 				break
 			}
-			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
+			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(""); err != nil {
 				log.Printf("wsHandler: key: x keyboard write error: %v", err)
 				break
 			}
@@ -166,7 +166,7 @@ func wsHandler(ws *websocket.Conn) {
 			}
 			text := fmt.Sprintf("%%%s%%\"%s\"", s, name)
 			log.Printf("wsHandler: %s: text %s", m.Type, text)
-			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
+			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(""); err != nil {
 				log.Printf("wsHandler: %s: x keyboard write error: %v", m.Type, err)
 				break
 			}

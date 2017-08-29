@@ -219,6 +219,7 @@ function keyinput(socket, elm, name, opt) {
 
 	this.message = function(msg) {
 		pos = $(this.elm).position();
+		//TODO use placeholder?
 		$("<div/>").css({
 			position: "absolute",
 			top: pos.top+"px",
@@ -250,6 +251,7 @@ function keyinput(socket, elm, name, opt) {
 		$(this.elm)
 			.off("focusout.keyinput")
 			.on("focusout.keyinput", function(e) {
+				//TODO use other approach, this breaks things if url bar in browser is clicked
 				log("keyinput on focusout: "+this.name, {color:"yellow"});
 				if ($(this.elm).is(":visible") == false) {
 					log("element is hidden", {level:1});

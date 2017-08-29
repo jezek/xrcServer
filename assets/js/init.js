@@ -1,6 +1,16 @@
 //require helpers.js
 $(function() {
 	log("init");
+
+	//ttc test
+	$("#ttcpage div").ttc()
+	.on("mousedown mousemove mouseup click", function(e){
+		log(xpath(this)+" on "+e.type, {color:"gold"});
+		var $span = $($(this).find("span."+e.type)[0]);
+		$span.text(parseInt($span.text())+1);
+	});
+	//ttc test
+
 	var tabs = new Tabs("#header .tab");
 
 	$(tabs.pages.keypage.header).on("select", function(e) {

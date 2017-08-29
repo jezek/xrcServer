@@ -31,7 +31,7 @@ function Tabs(elms) {
 			body: body
 		};
 		this.tabs.set(elm, body);
-		if (this.tabs.size==2) {
+		if (this.tabs.size==1) {
 			$(elm).addClass("selected");
 			body.show();
 			this.selected = elm;
