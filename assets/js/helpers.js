@@ -43,7 +43,7 @@ var touchtoclick = function() {
 	};
 
 	var simulateMouseEvent = function(target, type, touch) {
-		log("simulateMouseEvent: "+type, {level:1});
+		log("simulateMouseEvent: "+type, {color:"gray"});
 		//TODO use average for multitouch for screenX/Y, clientX/Y
 		var simulated = new MouseEvent(type, {
 			"bubbles":       true,
@@ -62,7 +62,7 @@ var touchtoclick = function() {
 			"relatedTarget": null,
 		});
 
-		log("dispatch simulated: "+simulated.type, {level:1});
+		log("dispatch simulated: "+simulated.type, {level:1, color:"gray"});
 		target.dispatchEvent(simulated);
 	};
 
@@ -83,76 +83,132 @@ var touchtoclick = function() {
 		if (e.stopPropagation) {e.stopPropagation();}
 	};
 
+	var touchByIdentifierFromList = function(identifier, list) {
+		log("touchByIdentifierFromList: "+identifier, {color:"gray"});
+		if (typeof(list) === "undefined") {
+			log("list is undefined", {level:1, color:"gray"});
+			return null;
+		}
+		for (var i = 0; i < list.length; i++) {
+			if (list[i].identifier === identifier) {
+				log("found in list", {level:1, color:"gray"});
+				return list[i];
+			}
+		}
+		return null;
+	};
+
 	var Touchtoclick = function(elm) {
-		//TODO do not send first mousedown, if touchmove occured within some time 
+		var mouseDownDelay = 100;
+		var mouseDownDelayTimer = null;
+		var mouseDownCancelMoveDistanceSquared = 100;
+
+		var minFirstMoveDistanceSquared = 200;
 		var moved = false;
 		var touch = null;
+
 		var ontouchstart = function(e){
 			log("ttc: touchstart: "+xpath(elm), {color: "lime"});
+
+			var mouseDownFunction = function() {
+				log("mouseDownFunction", {level:2});
+				simulateMouseEvent(e.target, "mousedown", touch);
+				log("prevent default", {level:2});
+				e.preventDefault();
+				mouseDownDelayTimer = null;
+			}.bind(this);
+
 			stopPropagation(e);
 			if (touch != null) {
+				log("touch is NOT null", {level:1, color: "lime"});
 				return;
 			}
 			if (e.changedTouches.length < 1) {
 				return;
 			}
-			moved = false;
+			log("first touch", {level:1, color: "lime"});
 			touch = e.changedTouches[0];
-			simulateMouseEvent(e.target, "mousedown", touch);
-			e.preventDefault();
+			moved = false;
+
+			if (mouseDownDelay) {
+				log("start mouseDownDelayTimer", {level:1, color: "lime"});
+				mouseDownDelayTimer = window.setTimeout(mouseDownFunction, mouseDownDelay);
+				return;
+			} 
+			mouseDownFunction();
 		}.bind(this);
+
 		var ontouchmove = function(e){
 			log("ttc: touchmove: "+xpath(elm), {color: "limegreen"});
 			stopPropagation(e);
 			if (touch === null) {
+				log("touch is null", {level:1, color: "limegreen"});
 				return;
 			}
-			var changed = null;
-			for (var i = 0; i < e.changedTouches.length; i++) {
-				if (e.changedTouches[i].identifier === touch.identifier) {
-					changed = e.changedTouches[i];
-					break;
-				}
-			}
+			var changed = touchByIdentifierFromList(touch.identifier, e.changedTouches);
 			if (changed === null) {
+				log("no changed touch", {level:1, color: "limegreen"});
 				return;
 			}
+			var dx = changed.screenX - touch.screenX;
+			var dy = changed.screenY - touch.screenY;
+			log("touch move: "+dx+", "+dy, {level:1, color: "limegreen"});
+
+			if (mouseDownDelayTimer != null) {
+				log("mouseDownDelayTimer running", {level:1, color: "limegreen"});
+				if (dx*dx + dy*dy < mouseDownCancelMoveDistanceSquared) {
+					return;
+				}
+				log("cancel mouse down", {level:1, color: "limegreen"});
+				clearTimeout(mouseDownDelayTimer);
+				mouseDownDelayTimer = null;
+				touch = null;
+				return;
+			}
+
+			log("was mouse down", {level:1, color: "limegreen"});
+			log("prevent default", {level:1});
+			e.preventDefault();
 			if (!moved) {
-				var dx = changed.screenX - touch.screenX;
-				var dy = changed.screenY - touch.screenY;
-				//TODO to options
-				if (dx*dx + dy*dy < 200) {
+				if (dx*dx + dy*dy < minFirstMoveDistanceSquared) {
 					return;
 				}
 			}
+			log("moved", {level:1, color: "limegreen"});
 			moved = true;
 			touch = changed;
 			simulateMouseEvent(e.target, "mousemove", touch);
-			e.preventDefault();
 		}.bind(this);
+
 		var ontouchend = function(e){
 			log("ttc: touchend: "+xpath(elm), {color: "lightgreen"});
 			stopPropagation(e);
-			//TODO duplicatecode with ontouchmove
 			if (touch === null) {
+				log("touch is null", {level:1, color: "lightgreen"});
 				return;
 			}
-			var changed = null;
-			for (var i = 0; i < e.changedTouches.length; i++) {
-				if (e.changedTouches[i].identifier === touch.identifier) {
-					changed = e.changedTouches[i];
-					break;
-				}
-			}
+			var changed = touchByIdentifierFromList(touch.identifier, e.changedTouches);
 			if (changed === null) {
+				log("no changed touch", {level:1, color: "lightgreen"});
 				return;
 			}
+			log("touch end", {level:1, color: "lightgreen"});
+
+			if (mouseDownDelayTimer !== null) {
+				log("mouseDownDelayTimer running", {level:1, color: "lightgreen"});
+				clearTimeout(mouseDownDelayTimer);
+				mouseDownDelayTimer = null;
+				simulateMouseEvent(e.target, "mousedown", touch);
+			}
+
 			simulateMouseEvent(e.target, "mouseup", touch);
 			if (!moved) {
 				simulateMouseEvent(e.target, "click", touch);
 			}
 			touch = null;
 			moved = false;
+			log("prevent default", {level:1});
+			e.preventDefault();
 		}.bind(this);
 
 		elm.addEventListener("touchstart", ontouchstart, eventListenerOptions);

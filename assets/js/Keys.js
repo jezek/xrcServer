@@ -1,4 +1,5 @@
 //require helpers.js, KeyModifiers.js
+//uses touchtoclick
 var keys = {
 	socket: null,
 	key: {}
@@ -8,7 +9,15 @@ keys.init = function(socket) {
 	log("init keys");
 	this.socket = socket;
 
+	var isTtc = (typeof(window.ttc) === "function");
+	if (!isTtc) {
+		log("no touchtoclick", {level:1});
+	}
+
 	$("button.key").each(function() {
+		if (isTtc) {
+			window.ttc(this);
+		}
 		keys.add(this);
 	});
 };
@@ -59,8 +68,7 @@ function key(socket, name) {
 		}));
 	};
 	this.ondown = function(e) {
-		e.preventDefault();
-		log("key "+this.name+" on down", {color:"lightgreen"});
+		log("key "+this.name+" on down", {color:"gold"});
 		this.downCount++;
 		if (this.downCount > 1) {
 			log("allready pressed", {level:1});
@@ -70,8 +78,7 @@ function key(socket, name) {
 		this.sendKey(this.name, true);
 	};
 	this.onup = function(e) {
-		e.preventDefault();
-		log("key "+this.name+" on up", {color:"lightgreen"});
+		log("key "+this.name+" on up", {color:"goldenrod"});
 		this.downCount--;
 		if (this.downCount > 0) {
 			log("still pressed", {level:1});
@@ -88,10 +95,8 @@ function key(socket, name) {
 	this.add = function(elm) {
 		log("key "+this.name+" add element: "+xpath(elm));
 		$(elm)
-			.on("touchstart.key", this.ondown.bind(this))
-			.on("touchend.key", this.onup.bind(this));
-			//.on("mousedown.key", this.ondown.bind(this))
-			//.on("mouseup.key", this.onup.bind(this));
+			.on("mousedown.key", this.ondown.bind(this))
+			.on("mouseup.key", this.onup.bind(this));
 		this.elements.push(elm);
 	};
 	this.destroy = function() {
@@ -99,10 +104,8 @@ function key(socket, name) {
 		$(this.elements).each(function(){
 			log("off: "+xpath(this), {level:1});
 			$(this)
-				.off("touchstart.key")
-				.off("touchend.key");
-				//.off("mousedown.key")
-				//.off("mouseup.key");
+				.off("mousedown.key")
+				.off("mouseup.key");
 		});
 	};
 	this.message = function(msg) {
