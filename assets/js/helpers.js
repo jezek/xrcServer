@@ -36,6 +36,19 @@ if (!Object.keys) {
 // register window.touchtoclick
 // using anonymous function to prevent others to create the same object
 var touchtoclick = function() {
+	var ttcBuiltinOptions = {
+		mouseDownDelay: 100, // trigger mousedown after delay, prevents browser touch default action after delay
+		mouseDownCancelMoveDistance: 10, // if touchmove distance exceeds this before mouseDownDelay, no mouse down is triggered (no prevent default browser touch actions)
+		minFirstMoveDistance: 15,
+		clickAfterMouseUpIfMoved: false
+	};
+
+	this.options = {
+		elementDataToOptions: true,
+		elementDataOverridesTtcOptions: true,
+		ttcDefaultOptions: Object.assign({}, ttcBuiltinOptions)
+	};
+
 	var elements = new Map();
 
 	var canListen = function(e) {
@@ -64,6 +77,7 @@ var touchtoclick = function() {
 
 		log("dispatch simulated: "+simulated.type, {level:1, color:"gray"});
 		target.dispatchEvent(simulated);
+		return simulated;
 	};
 
 	// https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#Safely_detecting_option_support
@@ -98,21 +112,40 @@ var touchtoclick = function() {
 		return null;
 	};
 
-	var Touchtoclick = function(elm) {
-		var mouseDownDelay = 100;
+	var Touchtoclick = function(elm, options) {
+		this.options = Object.assign({}, ttcBuiltinOptions, options);
 		var mouseDownDelayTimer = null;
-		var mouseDownCancelMoveDistanceSquared = 100;
+		var mouseDownCancelMoveDistanceSquared = this.options.mouseDownCancelMoveDistance * this.options.mouseDownCancelMoveDistance;
 
-		var minFirstMoveDistanceSquared = 200;
+		var minFirstMoveDistanceSquared = this.options.minFirstMoveDistance * this.options.minFirstMoveDistance;
 		var moved = false;
 		var touch = null;
 
+		// e.preventDefault() in timeout callback does not prevent browser from
+		// triggering mousemove & mousedown events. This hack fixes it.
+		var preventMouseEvents = false;
+		var preventEvent = function(e){
+			log("ttc: prevent "+e.type+" event: "+xpath(elm), {color: "brown"});
+			if (preventMouseEvents) {
+				log("preventing", {color: "brown", level:1});
+				e.stopImmediatePropagation();
+				if (e.type == "mousedown") {
+					preventMouseEvents = false;
+				}
+			}
+		}.bind(this);
+
 		var ontouchstart = function(e){
 			log("ttc: touchstart: "+xpath(elm), {color: "lime"});
+			preventMouseEvents = false;
 
 			var mouseDownFunction = function() {
 				log("mouseDownFunction", {level:2});
+				// do not prevent this mouse event
+				var tmp = preventMouseEvents;
+				preventMouseEvents = false;
 				simulateMouseEvent(e.target, "mousedown", touch);
+				preventMouseEvents = tmp;
 				log("prevent default", {level:2});
 				e.preventDefault();
 				mouseDownDelayTimer = null;
@@ -130,9 +163,12 @@ var touchtoclick = function() {
 			touch = e.changedTouches[0];
 			moved = false;
 
-			if (mouseDownDelay) {
+			if (this.options.mouseDownDelay) {
 				log("start mouseDownDelayTimer", {level:1, color: "lime"});
-				mouseDownDelayTimer = window.setTimeout(mouseDownFunction, mouseDownDelay);
+				mouseDownDelayTimer = window.setTimeout(mouseDownFunction, this.options.mouseDownDelay);
+				// e.preventDefault() in timeout callback does not prevent browser from
+				// triggering mousemove & mousedown events. This hack fixes it.
+				preventMouseEvents = true;
 				return;
 			} 
 			mouseDownFunction();
@@ -163,6 +199,7 @@ var touchtoclick = function() {
 				clearTimeout(mouseDownDelayTimer);
 				mouseDownDelayTimer = null;
 				touch = null;
+				preventMouseEvents = false;
 				return;
 			}
 
@@ -177,6 +214,7 @@ var touchtoclick = function() {
 			log("moved", {level:1, color: "limegreen"});
 			moved = true;
 			touch = changed;
+			preventMouseEvents = false;
 			simulateMouseEvent(e.target, "mousemove", touch);
 		}.bind(this);
 
@@ -194,6 +232,7 @@ var touchtoclick = function() {
 			}
 			log("touch end", {level:1, color: "lightgreen"});
 
+			preventMouseEvents = false;
 			if (mouseDownDelayTimer !== null) {
 				log("mouseDownDelayTimer running", {level:1, color: "lightgreen"});
 				clearTimeout(mouseDownDelayTimer);
@@ -201,12 +240,16 @@ var touchtoclick = function() {
 				simulateMouseEvent(e.target, "mousedown", touch);
 			}
 
-			simulateMouseEvent(e.target, "mouseup", touch);
-			if (!moved) {
-				simulateMouseEvent(e.target, "click", touch);
+			mouseUpEvent = simulateMouseEvent(e.target, "mouseup", touch);
+			if (!mouseUpEvent.defaultPrevented) {
+				if (options.clickAfterMouseUpIfMoved || !moved) {
+					simulateMouseEvent(e.target, "click", touch);
+				}
 			}
+
 			touch = null;
 			moved = false;
+
 			log("prevent default", {level:1});
 			e.preventDefault();
 		}.bind(this);
@@ -214,21 +257,35 @@ var touchtoclick = function() {
 		elm.addEventListener("touchstart", ontouchstart, eventListenerOptions);
 		elm.addEventListener("touchmove", ontouchmove, eventListenerOptions);
 		elm.addEventListener("touchend", ontouchend, eventListenerOptions);
+		elm.addEventListener("mousemove", preventEvent, eventListenerOptions);
+		elm.addEventListener("mousedown", preventEvent, eventListenerOptions);
 
 		this.remove = function() {
 			elm.removeEventListener("touchstart", ontouchstart, eventListenerOptions);
 			elm.removeEventListener("touchmove", ontouchmove, eventListenerOptions);
 			elm.removeEventListener("touchend", ontouchend, eventListenerOptions);
+			elm.removeEventListener("mousemove", preventEvent, eventListenerOptions);
+			elm.removeEventListener("mousedown", preventEvent, eventListenerOptions);
 		};
 	};
 
 	this.add = function (element, options) {
+		log("ttc.add: "+xpath(element), {color: "lightblue"});
 		if (!canListen(element)) {
 			console.warn("touchtoclick.add: element is not an event listener: ", element);
 			return;
 		}
+		var dataOptions = this.options.elementDataToOptions?$(element).data():{};
+		options = Object.assign(
+			{},
+			this.options.ttcDefaultOptions,
+			dataOptions,
+			options,
+			this.options.elementDataOverridesTtcOptions?dataOptions:{}
+		);
+
 		this.remove(element);
-		elements.set(element, new Touchtoclick(element));
+		elements.set(element, new Touchtoclick(element, options));
 		return this;
 	};
 
@@ -240,6 +297,7 @@ var touchtoclick = function() {
 		if (!elements.has(element)) {
 			return;
 		}
+		log("ttc.remove: "+xpath(element), {color: "navyblue"});
 		elements.get(element).remove();
 		elements.delete(element);
 		return this;

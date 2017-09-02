@@ -12,7 +12,7 @@ function TouchButton(elm, opt) {
 
 	this.elm.on("touchstart", function(e) {
 		e.preventDefault();
-		//log(this.elm.prop("id")+" on: touchstart");
+		log(this.elm.prop("id")+" on: touchstart");
 		//log("e.touches.length: "+e.touches.length);
 		//log("this.maxTouches: "+this.maxTouches);
 		//log("this.locked: "+this.locked);

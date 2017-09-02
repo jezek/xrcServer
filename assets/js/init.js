@@ -3,7 +3,8 @@ $(function() {
 	log("init");
 
 	//ttc test
-	$("#ttcpage div").ttc()
+	$("#ttcpage div")
+	.ttc()
 	.on("mousedown mousemove mouseup click", function(e){
 		log(xpath(this)+" on "+e.type, {color:"gold"});
 		var $span = $($(this).find("span."+e.type)[0]);

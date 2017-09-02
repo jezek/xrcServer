@@ -9,7 +9,7 @@ function TouchPad(elm, opt) {
 	this.touches = new Map();
 
 	this.elm.on("touchstart", function(e) {
-		//log("touchstart");
+		log("touchpad: touchstart");
 		e.preventDefault();
 		for (var i = 0; i < e.changedTouches.length; i++) {
 			var t = e.changedTouches[i];

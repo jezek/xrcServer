@@ -4,12 +4,15 @@ body {
 	background: black;
 	color: white;
 }
+body * {
+	background: black;
+	color: white;
+}
 
 #header {
 	position: fixed;
 	top: 0;
 	width:100%;
-	box-sizing: border-box;
 	height: 2em;
 	border-bottom: 1px solid white;
 	background: black;
@@ -52,6 +55,8 @@ div.page {
 
 .touchpad {
 	border: 1px solid gray;
+	background: black;
+	color: white;
 }
 
 #touchpad {
