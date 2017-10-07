@@ -37,7 +37,7 @@ if (!Object.keys) {
 // using anonymous function to prevent others to create the same object
 var touchtoclick = function() {
 	var ttcBuiltinOptions = {
-		mouseDownDelay: 100, // trigger mousedown after delay, prevents browser touch default action after delay
+		mouseDownDelay: 200, // trigger mousedown after delay, prevents browser touch default action after delay
 		mouseDownCancelMoveDistance: 10, // if touchmove distance exceeds this before mouseDownDelay, no mouse down is triggered (no prevent default browser touch actions)
 		minFirstMoveDistance: 15,
 		clickAfterMouseUpIfMoved: false

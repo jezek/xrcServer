@@ -2,12 +2,12 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-inoremap <silent> <Plug>(neocomplete_auto_refresh) =neocomplete#mappings#refresh()
-inoremap <silent> <Plug>(neocomplete_start_manual_complete) =neocomplete#mappings#manual_complete()
-inoremap <silent> <Plug>(neocomplete_start_auto_complete) =neocomplete#mappings#auto_complete()
-inoremap <silent> <Plug>(neocomplete_start_omni_complete) 
-inoremap <silent> <expr> <Plug>(neocomplete_start_unite_quick_match) unite#sources#neocomplete#start_quick_match()
 inoremap <silent> <expr> <Plug>(neocomplete_start_unite_complete) unite#sources#neocomplete#start_complete()
+inoremap <silent> <expr> <Plug>(neocomplete_start_unite_quick_match) unite#sources#neocomplete#start_quick_match()
+inoremap <silent> <Plug>(neocomplete_start_omni_complete) 
+inoremap <silent> <Plug>(neocomplete_start_auto_complete) =neocomplete#mappings#auto_complete()
+inoremap <silent> <Plug>(neocomplete_start_manual_complete) =neocomplete#mappings#manual_complete()
+inoremap <silent> <Plug>(neocomplete_auto_refresh) =neocomplete#mappings#refresh()
 map! <S-Insert> <MiddleMouse>
 inoremap <silent> <expr> <Plug>(neosnippet_start_unite_snippet) unite#sources#neosnippet#start_complete()
 inoremap <silent> <expr> <Plug>(neosnippet_jump) neosnippet#mappings#jump_impl()
@@ -27,13 +27,13 @@ map  l
 map  :cprevious
 map  :cnext
 nmap  :w
-nmap ,s <Plug>(go-implements)
-nmap ,v <Plug>(go-def-vertical)
-nmap ,l <Plug>(go-metalinter)
-nmap ,i <Plug>(go-info)
-nmap ,d <Plug>(go-doc)
-nmap ,r <Plug>(go-run)
 nmap ,t <Plug>(go-test)
+nmap ,r <Plug>(go-run)
+nmap ,d <Plug>(go-doc)
+nmap ,i <Plug>(go-info)
+nmap ,l <Plug>(go-metalinter)
+nmap ,v <Plug>(go-def-vertical)
+nmap ,s <Plug>(go-implements)
 nmap ,f <Plug>(go-test-func)
 nmap ,e <Plug>(go-rename)
 nnoremap ,a :cclose
@@ -45,56 +45,57 @@ nmap gx <Plug>NetrwBrowseX
 noremap j gj
 noremap k gk
 nnoremap n nzzzv
-nnoremap <silent> <Plug>(go-alternate-split) :call go#alternate#Switch(0, "split")
-nnoremap <silent> <Plug>(go-alternate-vertical) :call go#alternate#Switch(0, "vsplit")
-nnoremap <silent> <Plug>(go-alternate-edit) :call go#alternate#Switch(0, "edit")
-nnoremap <silent> <Plug>(go-vet) :call go#lint#Vet(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-lint) :call go#lint#Golint()
-nnoremap <silent> <Plug>(go-metalinter) :call go#lint#Gometa(0)
-nnoremap <silent> <Plug>(go-doc-browser) :call go#doc#OpenBrowser()
-nnoremap <silent> <Plug>(go-doc-split) :call go#doc#Open("new", "split")
-nnoremap <silent> <Plug>(go-doc-vertical) :call go#doc#Open("vnew", "vsplit")
-nnoremap <silent> <Plug>(go-doc-tab) :call go#doc#Open("tabnew", "tabe")
-nnoremap <silent> <Plug>(go-doc) :call go#doc#Open("new", "split")
-nnoremap <silent> <Plug>(go-def-stack-clear) :call go#def#StackClear()
-nnoremap <silent> <Plug>(go-def-stack) :call go#def#Stack()
-nnoremap <silent> <Plug>(go-def-pop) :call go#def#StackPop()
-nnoremap <silent> <Plug>(go-def-tab) :call go#def#Jump("tab")
-nnoremap <silent> <Plug>(go-def-split) :call go#def#Jump("split")
-nnoremap <silent> <Plug>(go-def-vertical) :call go#def#Jump("vsplit")
-nnoremap <silent> <Plug>(go-def) :call go#def#Jump('')
-nnoremap <silent> <Plug>(go-rename) :call go#rename#Rename(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-sameids-toggle) :call go#guru#ToggleSameIds()
-nnoremap <silent> <Plug>(go-whicherrs) :call go#guru#Whicherrs(-1)
-nnoremap <silent> <Plug>(go-sameids) :call go#guru#SameIds()
-nnoremap <silent> <Plug>(go-referrers) :call go#guru#Referrers(-1)
-nnoremap <silent> <Plug>(go-channelpeers) :call go#guru#ChannelPeers(-1)
-xnoremap <silent> <Plug>(go-freevars) :call go#guru#Freevars(0)
-nnoremap <silent> <Plug>(go-callstack) :call go#guru#Callstack(-1)
-nnoremap <silent> <Plug>(go-describe) :call go#guru#Describe(-1)
-nnoremap <silent> <Plug>(go-callers) :call go#guru#Callers(-1)
-nnoremap <silent> <Plug>(go-callees) :call go#guru#Callees(-1)
-nnoremap <silent> <Plug>(go-implements) :call go#guru#Implements(-1)
-nnoremap <silent> <Plug>(go-imports) :call go#fmt#Format(1)
-nnoremap <silent> <Plug>(go-import) :call go#import#SwitchImport(1, '', expand('<cword>'), '')
-nnoremap <silent> <Plug>(go-info) :call go#tool#Info(0)
-nnoremap <silent> <Plug>(go-deps) :call go#tool#Deps()
-nnoremap <silent> <Plug>(go-files) :call go#tool#Files()
-nnoremap <silent> <Plug>(go-coverage-browser) :call go#coverage#Browser(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-coverage-toggle) :call go#coverage#BufferToggle(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-coverage-clear) :call go#coverage#Clear()
-nnoremap <silent> <Plug>(go-coverage) :call go#coverage#Buffer(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-test-compile) :call go#test#Test(!g:go_jump_to_error, 1)
-nnoremap <silent> <Plug>(go-test-func) :call go#test#Func(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-test) :call go#test#Test(!g:go_jump_to_error, 0)
-nnoremap <silent> <Plug>(go-install) :call go#cmd#Install(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-generate) :call go#cmd#Generate(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-build) :call go#cmd#Build(!g:go_jump_to_error)
+nnoremap <SNR>41_: :=v:count ? v:count : ''
 nnoremap <silent> <Plug>(go-run) :call go#cmd#Run(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-build) :call go#cmd#Build(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-generate) :call go#cmd#Generate(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-install) :call go#cmd#Install(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-test) :call go#test#Test(!g:go_jump_to_error, 0)
+nnoremap <silent> <Plug>(go-test-func) :call go#test#Func(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-test-compile) :call go#test#Test(!g:go_jump_to_error, 1)
+nnoremap <silent> <Plug>(go-coverage) :call go#coverage#Buffer(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-coverage-clear) :call go#coverage#Clear()
+nnoremap <silent> <Plug>(go-coverage-toggle) :call go#coverage#BufferToggle(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-coverage-browser) :call go#coverage#Browser(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-files) :call go#tool#Files()
+nnoremap <silent> <Plug>(go-deps) :call go#tool#Deps()
+nnoremap <silent> <Plug>(go-info) :call go#tool#Info(0)
+nnoremap <silent> <Plug>(go-import) :call go#import#SwitchImport(1, '', expand('<cword>'), '')
+nnoremap <silent> <Plug>(go-imports) :call go#fmt#Format(1)
+nnoremap <silent> <Plug>(go-implements) :call go#guru#Implements(-1)
+nnoremap <silent> <Plug>(go-callees) :call go#guru#Callees(-1)
+nnoremap <silent> <Plug>(go-callers) :call go#guru#Callers(-1)
+nnoremap <silent> <Plug>(go-describe) :call go#guru#Describe(-1)
+nnoremap <silent> <Plug>(go-callstack) :call go#guru#Callstack(-1)
+xnoremap <silent> <Plug>(go-freevars) :call go#guru#Freevars(0)
+nnoremap <silent> <Plug>(go-channelpeers) :call go#guru#ChannelPeers(-1)
+nnoremap <silent> <Plug>(go-referrers) :call go#guru#Referrers(-1)
+nnoremap <silent> <Plug>(go-sameids) :call go#guru#SameIds()
+nnoremap <silent> <Plug>(go-whicherrs) :call go#guru#Whicherrs(-1)
+nnoremap <silent> <Plug>(go-sameids-toggle) :call go#guru#ToggleSameIds()
+nnoremap <silent> <Plug>(go-rename) :call go#rename#Rename(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-def) :call go#def#Jump('')
+nnoremap <silent> <Plug>(go-def-vertical) :call go#def#Jump("vsplit")
+nnoremap <silent> <Plug>(go-def-split) :call go#def#Jump("split")
+nnoremap <silent> <Plug>(go-def-tab) :call go#def#Jump("tab")
+nnoremap <silent> <Plug>(go-def-pop) :call go#def#StackPop()
+nnoremap <silent> <Plug>(go-def-stack) :call go#def#Stack()
+nnoremap <silent> <Plug>(go-def-stack-clear) :call go#def#StackClear()
+nnoremap <silent> <Plug>(go-doc) :call go#doc#Open("new", "split")
+nnoremap <silent> <Plug>(go-doc-tab) :call go#doc#Open("tabnew", "tabe")
+nnoremap <silent> <Plug>(go-doc-vertical) :call go#doc#Open("vnew", "vsplit")
+nnoremap <silent> <Plug>(go-doc-split) :call go#doc#Open("new", "split")
+nnoremap <silent> <Plug>(go-doc-browser) :call go#doc#OpenBrowser()
+nnoremap <silent> <Plug>(go-metalinter) :call go#lint#Gometa(0)
+nnoremap <silent> <Plug>(go-lint) :call go#lint#Golint()
+nnoremap <silent> <Plug>(go-vet) :call go#lint#Vet(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-alternate-edit) :call go#alternate#Switch(0, "edit")
+nnoremap <silent> <Plug>(go-alternate-vertical) :call go#alternate#Switch(0, "vsplit")
+nnoremap <silent> <Plug>(go-alternate-split) :call go#alternate#Switch(0, "split")
 map <S-Insert> <MiddleMouse>
 vnoremap <silent> <Plug>NetrwBrowseXVis :call netrw#BrowseXVis()
 nnoremap <silent> <Plug>NetrwBrowseX :call netrw#BrowseX(expand((exists("g:netrw_gx")? g:netrw_gx : '<cfile>')),netrw#CheckIfRemote())
-nnoremap <SNR>41_: :=v:count ? v:count : ''
+nnoremap <SNR>36_: :=v:count ? v:count : ''
 xnoremap <silent> <Plug>(neosnippet_register_oneshot_snippet) :call neosnippet#mappings#_register_oneshot_snippet()
 xnoremap <silent> <Plug>(neosnippet_expand_target) :call neosnippet#mappings#_expand_target()
 xnoremap <silent> <Plug>(neosnippet_get_selected_text) :call neosnippet#helpers#get_selected_text(visualmode(), 1)
@@ -174,7 +175,7 @@ set undodir=~/.vim/tmp/undo//
 set undofile
 set wildmenu
 set wildmode=longest:full
-set window=29
+set window=46
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -200,7 +201,7 @@ set stal=2
 edit xrcServer.go
 set splitbelow splitright
 wincmd t
-set winminheight=1 winheight=1 winminwidth=1 winwidth=1
+set winheight=1 winwidth=1
 argglobal
 nnoremap <buffer> <silent>  :call go#def#StackPop(v:count1)
 nnoremap <buffer> <silent> ] :call go#def#Jump("split")
@@ -277,7 +278,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=cq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -292,7 +292,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=go\ build
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -330,8 +329,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -341,7 +338,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 22) / 45)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -354,9 +351,11 @@ vsplit
 1wincmd h
 wincmd w
 wincmd t
-set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 49 + 62) / 125)
-exe 'vert 2resize ' . ((&columns * 73 + 62) / 125)
+set winheight=1 winwidth=1
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 32 + 75) / 151)
+exe '2resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 47 + 75) / 151)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -411,7 +410,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=tcq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -426,7 +424,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:],<:>
 setlocal modeline
@@ -464,8 +461,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -475,7 +470,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -537,7 +532,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -552,7 +546,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -590,8 +583,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -601,15 +592,17 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe 'vert 1resize ' . ((&columns * 49 + 62) / 125)
-exe 'vert 2resize ' . ((&columns * 73 + 62) / 125)
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 32 + 75) / 151)
+exe '2resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 47 + 75) / 151)
 tabedit assets/js/init.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -617,9 +610,11 @@ vsplit
 1wincmd h
 wincmd w
 wincmd t
-set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 41 + 62) / 125)
-exe 'vert 2resize ' . ((&columns * 81 + 62) / 125)
+set winheight=1 winwidth=1
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 27 + 75) / 151)
+exe '2resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 52 + 75) / 151)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -674,7 +669,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -689,7 +683,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -727,8 +720,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -738,7 +729,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -800,7 +791,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -815,7 +805,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -853,8 +842,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -864,15 +851,17 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe 'vert 1resize ' . ((&columns * 41 + 62) / 125)
-exe 'vert 2resize ' . ((&columns * 81 + 62) / 125)
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 27 + 75) / 151)
+exe '2resize ' . ((&lines * 22 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 52 + 75) / 151)
 tabedit assets/js/Tabs.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -884,12 +873,12 @@ split
 1wincmd k
 wincmd w
 wincmd t
-set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 42 + 62) / 125)
-exe '2resize ' . ((&lines * 15 + 15) / 30)
-exe 'vert 2resize ' . ((&columns * 80 + 62) / 125)
-exe '3resize ' . ((&lines * 12 + 15) / 30)
-exe 'vert 3resize ' . ((&columns * 80 + 62) / 125)
+set winheight=1 winwidth=1
+exe 'vert 1resize ' . ((&columns * 53 + 75) / 151)
+exe '2resize ' . ((&lines * 26 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 95 + 75) / 151)
+exe '3resize ' . ((&lines * 20 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 95 + 75) / 151)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -944,7 +933,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -959,7 +947,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -997,8 +984,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1008,7 +993,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1070,7 +1055,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -1085,7 +1069,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -1123,8 +1106,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1134,7 +1115,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 7) / 15)
+let s:l = 1 - ((0 * winheight(0) + 13) / 26)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1196,7 +1177,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -1211,7 +1191,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -1249,8 +1228,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1260,18 +1237,18 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 6) / 12)
+let s:l = 1 - ((0 * winheight(0) + 10) / 20)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe 'vert 1resize ' . ((&columns * 42 + 62) / 125)
-exe '2resize ' . ((&lines * 15 + 15) / 30)
-exe 'vert 2resize ' . ((&columns * 80 + 62) / 125)
-exe '3resize ' . ((&lines * 12 + 15) / 30)
-exe 'vert 3resize ' . ((&columns * 80 + 62) / 125)
+exe 'vert 1resize ' . ((&columns * 53 + 75) / 151)
+exe '2resize ' . ((&lines * 26 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 95 + 75) / 151)
+exe '3resize ' . ((&lines * 20 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 95 + 75) / 151)
 tabedit assets/js/KeyInput.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -1283,12 +1260,12 @@ split
 1wincmd k
 wincmd w
 wincmd t
-set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 42 + 62) / 125)
-exe '2resize ' . ((&lines * 15 + 15) / 30)
-exe 'vert 2resize ' . ((&columns * 80 + 62) / 125)
-exe '3resize ' . ((&lines * 12 + 15) / 30)
-exe 'vert 3resize ' . ((&columns * 80 + 62) / 125)
+set winheight=1 winwidth=1
+exe 'vert 1resize ' . ((&columns * 53 + 75) / 151)
+exe '2resize ' . ((&lines * 26 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 95 + 75) / 151)
+exe '3resize ' . ((&lines * 20 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 95 + 75) / 151)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -1343,7 +1320,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -1358,7 +1334,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -1396,8 +1371,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1407,7 +1380,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 14) / 28)
+let s:l = 1 - ((0 * winheight(0) + 23) / 47)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1469,7 +1442,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -1484,7 +1456,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -1522,8 +1493,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1533,7 +1502,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 7) / 15)
+let s:l = 1 - ((0 * winheight(0) + 13) / 26)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1595,7 +1564,6 @@ setlocal foldtext=foldtext()
 setlocal formatexpr=
 setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
 setlocal grepprg=
 setlocal iminsert=2
 setlocal imsearch=2
@@ -1610,7 +1578,6 @@ setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 setlocal nolist
-setlocal makeencoding=
 setlocal makeprg=
 setlocal matchpairs=(:),{:},[:]
 setlocal modeline
@@ -1648,8 +1615,6 @@ endif
 setlocal tabstop=2
 setlocal tagcase=
 setlocal tags=
-setlocal termkey=
-setlocal termsize=
 setlocal textwidth=0
 setlocal thesaurus=
 setlocal undofile
@@ -1659,18 +1624,18 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 6) / 12)
+let s:l = 1 - ((0 * winheight(0) + 10) / 20)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe 'vert 1resize ' . ((&columns * 42 + 62) / 125)
-exe '2resize ' . ((&lines * 15 + 15) / 30)
-exe 'vert 2resize ' . ((&columns * 80 + 62) / 125)
-exe '3resize ' . ((&lines * 12 + 15) / 30)
-exe 'vert 3resize ' . ((&columns * 80 + 62) / 125)
+exe 'vert 1resize ' . ((&columns * 53 + 75) / 151)
+exe '2resize ' . ((&lines * 26 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 95 + 75) / 151)
+exe '3resize ' . ((&lines * 20 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 95 + 75) / 151)
 tabnext 1
 set stal=1
 if exists('s:wipebuf')
@@ -1678,7 +1643,6 @@ if exists('s:wipebuf')
 endif
 unlet! s:wipebuf
 set winheight=1 winwidth=20 shortmess=filnxtToO
-set winminheight=1 winminwidth=1
 let s:sx = expand("<sfile>:p:r")."x.vim"
 if file_readable(s:sx)
   exe "source " . fnameescape(s:sx)

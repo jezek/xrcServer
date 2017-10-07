@@ -188,19 +188,17 @@ function keyinput(socket, elm, name, opt) {
 
 	$(this.elm).on("keyinput", function(e) {
 		log("keyinput", {color: "blue"});
-		log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
-		var codes="";
-		for (i=0; i<e.text.length; i++) {
-			if (codes != "") {
-				codes +=",";
-			}
-			codes += ""+e.text.charCodeAt(i);
+		e.text = e.text.replace("%", "%%");
+
+		if (typeof(modifiers) != "undefined") {
+			e.text = modifiers.apply(e.text);
 		}
-		log("e.text: codes: "+codes, {level: 1});
+
+		log("e.text: \"<code>"+e.text+"</code>\"", {level: 1});
 		this.socket.send(JSON.stringify({
 			type: "keyinput",
 			data: {
-				text: e.text.replace("%", "%%"),
+				text: e.text,
 				sender: this.name
 			}
 		}));
@@ -235,9 +233,6 @@ function keyinput(socket, elm, name, opt) {
 			.animate({opacity:0}, 400, "swing", function() {
 				$(this).remove();
 			});
-		if (typeof(modifiers) != "undefined") {
-			modifiers.relase();
-		}
 	};
 
 	this.placeholder = null;
