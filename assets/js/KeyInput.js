@@ -217,21 +217,14 @@ function keyinput(socket, elm, name, opt) {
 
 	this.message = function(msg) {
 		pos = $(this.elm).position();
-		//TODO use placeholder?
-		$("<div/>").css({
-			position: "absolute",
-			top: pos.top+"px",
-			left: pos.left+"px",
-			width: $(this.elm).outerWidth()+"px",
-			height: $(this.elm).outerHeight()+"px",
-			display: "flex",
-			"justify-content": "center",
-			"align-content": "center",
-			"align-items": "center"
-		}).text(m.data.text)
-			.appendTo($(this.elm).parent())
-			.animate({opacity:0}, 400, "swing", function() {
-				$(this).remove();
+		$(this.elm)
+			.finish()
+			.css({borderColor:"green"})
+			.attr("placeholder", m.data.text)
+		  .animate({borderColor:"initial"}, 400, "swing", function() {
+				$(this)
+					.attr("placeholder", "")
+					.css({borderColor:"initial"})
 			});
 	};
 
@@ -268,7 +261,7 @@ function keyinput(socket, elm, name, opt) {
 	this.unfocus = function() {
 		log("keyinput unfocus: "+this.name, {color:"brown"});
 		$(this.elm).off("focusout.keyinput");
-		$(this.elm).attr("placeholder",this.placeholder);
+		$(this.elm).finish().attr("placeholder",this.placeholder);
 		this.placeholder = null;
 	};
 
