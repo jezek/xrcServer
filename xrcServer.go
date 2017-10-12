@@ -1,12 +1,17 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
+	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"net"
 	"net/http"
-	"sync"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 	"xgo"
 
 	"golang.org/x/net/websocket"
@@ -17,156 +22,132 @@ var disp *xgo.Display
 var port = flag.String("p", "10905", "http service port")
 var assets = flag.String("d", "assets/", "working dir")
 
-var httpHomeTemplateFilename string
 var homeTempl *template.Template
 
-func init() {
-	flag.Parse()
-
-	httpHomeTemplateFilename = *assets + "index.html"
-	homeTempl = template.Must(template.ParseFiles(httpHomeTemplateFilename))
-
-}
-
-func homeHandler(c http.ResponseWriter, req *http.Request) {
-	log.Printf("homeHandler: %v", req.URL.Path)
-	if req.URL.Path != "/" {
-		//log.Printf("Send him file: %v", http.Dir(req.URL.Path))
-		//http.ServeFile(c, req, req.URL.Path)
-		return
-	}
-	log.Printf("homeHandler: template \"%s\"", httpHomeTemplateFilename)
-	homeTempl.Execute(c, req.Host)
-}
-
-type message struct {
-	Type string                 `json:"type"`
-	Data map[string]interface{} `json:"data"`
-}
-
-func wsHandler(ws *websocket.Conn) {
-	log.Printf("wsHandler: start")
-	defer log.Printf("wsHandler: stop")
-	defer ws.Close()
-
-	wg := sync.WaitGroup{}
-	defer wg.Wait()
-
-	send := make(chan []byte, 1)
-	defer close(send)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case msg, ok := <-send:
-				if !ok {
-					log.Printf("wsHandler: send: closed")
-					return
-				}
-				if _, err := ws.Write(msg); err != nil {
-					log.Printf("wsHandler: send: error %v", err)
-				}
-			}
-		}
-	}()
-
-	var msg string
-	for {
-		if err := websocket.Message.Receive(ws, &msg); err != nil {
-			log.Printf("wsHandler: recieve error: %s", err)
-			break
-		}
-		//log.Printf("wsHandler: recieved message: %s", msg)
-		m := message{}
-		if err := json.Unmarshal([]byte(msg), &m); err != nil {
-			log.Printf("wsHandler: unmarshal error: %s", err)
-			break
-		}
-		//log.Printf("wsHandler: m: %#v", m)
-		switch m.Type {
-		case "moverelative":
-			x, y := int(2*m.Data["x"].(float64)), int(2*m.Data["y"].(float64))
-			log.Printf("wsHandler: move relative x: %d, y:  %d", x, y)
-			disp.DefaultScreen().Window().Pointer().Control().MoveRelative(x, y)
-		case "down":
-			b := m.Data["button"].(string)
-			log.Printf("wsHandler: down: %s", b)
-			switch b {
-			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().DownLeft()
-			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().DownRight()
-			default:
-				log.Printf("wsHandler: down: %s unknown", b)
-			}
-		case "up":
-			b := m.Data["button"].(string)
-			log.Printf("wsHandler: up: %s", b)
-			switch b {
-			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().UpLeft()
-			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().UpRight()
-			default:
-				log.Printf("wsHandler: up: %s unknown", b)
-			}
-		case "click":
-			b := m.Data["button"].(string)
-			log.Printf("wsHandler: click: %s", b)
-			switch b {
-			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().ClickLeft()
-			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().ClickRight()
-			default:
-				log.Printf("wsHandler: click: %s unknown", b)
-			}
-		case "scroll":
-			dir := m.Data["dir"].(string)
-			log.Printf("wsHandler: scroll: %s", dir)
-			switch dir {
-			case "down":
-				disp.DefaultScreen().Window().Pointer().Control().ScrollDown()
-			case "up":
-				disp.DefaultScreen().Window().Pointer().Control().ScrollUp()
-			default:
-				log.Printf("wsHandler: scroll: %s unknown", dir)
-			}
-		case "keyinput", "key":
-			log.Printf("wsHandler: %s: %v", m.Type, m.Data)
-			text, ok := m.Data["text"].(string)
-			log.Printf("wsHandler: key: text codes %v", []byte(text))
-			if !ok {
-				log.Printf("wsHandler: key: no text, or not string: %v", m.Data["text"])
-				break
-			}
-			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
-				log.Printf("wsHandler: key: x keyboard write error: %v", err)
-				//TODO send error back
-				break
-			}
-			send <- []byte(msg)
-		default:
-			log.Printf("wsHandler: unknown type: %s", m.Type)
-		}
-	}
-}
-
 func main() {
-	var err error
-	disp, err = xgo.OpenDisplay("")
+	logFile, err := os.OpenFile("xrcServer.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0664)
+	if err == nil {
+		defer logFile.Close()
+		logMW := io.MultiWriter(os.Stderr, logFile)
+		log.SetOutput(logMW)
+		log.Printf("hello")
+	} else {
+		log.SetOutput(os.Stderr)
+		log.Printf("hello")
+		log.Printf("logging only to Stderr")
+	}
+	defer log.Printf("bye")
+
+	flag.Parse()
+	homeTempl = template.Must(template.ParseFiles(filepath.Join(*assets, "index.html")))
+
+	d, err := xgo.OpenDisplay("")
 	if err != nil {
 		log.Fatal(err)
 	}
+	disp = d
 
-	http.HandleFunc("/", homeHandler)
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(*assets+"js/"))))
-	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(*assets+"css/"))))
-	http.Handle("/ws", websocket.Handler(wsHandler))
-	log.Printf("xrcServer listens on port :%s", *port)
-	if err := http.ListenAndServe(":"+*port, nil); err != nil {
-		log.Fatal("http.ListenAndServe:", err)
+	nl, err := net.Listen("tcp", ":"+*port)
+	if err != nil {
+		log.Fatal(err)
 	}
+	log.Printf("xrcServer listens on port :%s", *port)
+
+	interruptCancel := make(chan struct{})
+
+	if errors := concurent(
+		runner{
+			func() error {
+
+				mux := http.NewServeMux()
+				mux.HandleFunc("/", homeHandler)
+				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(*assets+"js/"))))
+				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(*assets+"css/"))))
+				mux.Handle("/ws", websocket.Handler(wsHandler))
+
+				return http.Serve(nl, mux)
+			},
+			func() error {
+				return nl.Close()
+			},
+		},
+		runner{
+			func() error {
+				interrupt(interruptCancel)
+				return nil
+			},
+			func() error {
+				close(interruptCancel)
+				return nil
+			},
+		},
+	); len(errors) > 0 {
+		for _, err := range errors {
+			log.Print(err)
+		}
+	}
+}
+
+func interrupt(cancel <-chan struct{}) {
+	log.Print("Press Ctrl-c to quit")
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(c)
+	select {
+	case sig := <-c:
+		fmt.Println() // Prevent un-terminated ^C character in terminal
+		log.Printf("received signal: %s", sig)
+	case <-cancel:
+	}
+}
+
+type runner struct {
+	run  func() error
+	stop func() error
+}
+type runnererror struct {
+	index int
+	err   error
+}
+
+func concurent(runners ...runner) []error {
+	if len(runners) == 0 {
+		return nil
+	}
+
+	if len(runners) == 1 {
+		return []error{runners[0].run()}
+	}
+
+	res := make([]error, 0)
+	errors := make(chan runnererror, len(runners))
+
+	for i, r := range runners {
+		go func(i int, f func() error) {
+			errors <- runnererror{i, f()}
+		}(i, r.run)
+	}
+
+	rerr := <-errors
+	if rerr.err != nil {
+		res = append(res, rerr.err)
+	}
+
+	for i, r := range runners {
+		if i == rerr.index {
+			continue
+		}
+		if serr := r.stop(); serr != nil {
+			//TODO diferentiate between run errors and stop errors
+			res = append(res, serr)
+		}
+	}
+
+	for i := 0; i < cap(runners)-1; i++ {
+		rerr = <-errors
+		if rerr.err != nil {
+			res = append(res, rerr.err)
+		}
+	}
+	return res
 }
