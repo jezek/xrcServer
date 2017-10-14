@@ -1,16 +1,22 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509/pkix"
 	"flag"
 	"fmt"
 	"html/template"
+	"https"
+	"https/certificates"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"xgo"
 
@@ -19,8 +25,10 @@ import (
 
 var disp *xgo.Display
 
-var port = flag.String("p", "10905", "http service port")
-var assets = flag.String("d", "assets/", "working dir")
+// Flags
+var (
+	port, assets, config string
+)
 
 var homeTempl *template.Template
 
@@ -38,8 +46,23 @@ func main() {
 	}
 	defer log.Printf("bye")
 
+	// Flags
+	flag.StringVar(&port, "p", "10905", "http service port")
+	flag.StringVar(&assets, "d", "assets", "working dir")
+	flag.StringVar(&config, "c", "~/.config/xrcServer", "configuration dir")
 	flag.Parse()
-	homeTempl = template.Must(template.ParseFiles(filepath.Join(*assets, "index.html")))
+	homeTempl = template.Must(template.ParseFiles(filepath.Join(assets, "index.html")))
+
+	if strings.HasPrefix(config, "~") {
+		user, err := user.Current()
+		if err == nil {
+			config = filepath.Join(user.HomeDir, config[1:])
+		} else {
+			log.Print(err)
+			log.Printf("can't get user, using current dir for config")
+		}
+	}
+	log.Printf("config dir: %s", config)
 
 	d, err := xgo.OpenDisplay("")
 	if err != nil {
@@ -47,25 +70,80 @@ func main() {
 	}
 	disp = d
 
-	nl, err := net.Listen("tcp", ":"+*port)
+	nl, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("xrcServer listens on port :%s", *port)
+	log.Printf("xrcServer listens on port :%s", port)
 
 	interruptCancel := make(chan struct{})
 
-	if errors := concurent(
+	if errors := run(
 		runner{
 			func() error {
+				certFile := filepath.Join(config, "cert.pem")
+				keyFile := filepath.Join(config, "key.pem")
+
+				certs := []tls.Certificate{}
+				if err := certificates.Check(certFile, keyFile); err == nil {
+					log.Printf("using https certificates (cert.pem, key.pem) from %s", config)
+					cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+					if err != nil {
+						log.Printf("failed to load https certificates (cert.pem, key.pem) from %s: %s", config, err)
+					} else {
+						certs = append(certs, cert)
+					}
+				}
+
+				if len(certs) == 0 {
+					//no certificates, try to generate
+					log.Printf("trying to create https certificates (cert.pem, key.pem) to %s", config)
+					//TODO use config to generate
+					c := certificates.Config{
+						Hosts: []string{"127.0.0.1:" + port, "localhost:" + port},
+						Subject: &pkix.Name{
+							Organization: []string{"jEzCorp"},
+							CommonName:   "xrcServer",
+						},
+					}
+					certBlob, keyBlob, err := certificates.GenerateArrays(c)
+					if err != nil {
+						return fmt.Errorf("couldn't create certificates: %s", err)
+					}
+					cert, err := tls.X509KeyPair(certBlob, keyBlob)
+					if err != nil {
+						return fmt.Errorf("couldn't load created certificates: %s", err)
+					}
+					certs = append(certs, cert)
+
+					if err := certificates.Save(certFile, keyFile, certBlob, keyBlob); err != nil {
+						log.Printf("failed to save https certificates (cert.pem, key.pem) to %s: %s", config, err)
+						log.Print("certificates will be lost on exit")
+					} else {
+						log.Printf("created https certificates (cert.pem, key.pem) to %s", config)
+					}
+				}
+
+				if len(certs) == 0 {
+					log.Fatal("BUG: no certificates")
+				}
 
 				mux := http.NewServeMux()
 				mux.HandleFunc("/", homeHandler)
-				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(*assets+"js/"))))
-				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(*assets+"css/"))))
+				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(filepath.Join(assets, "js")))))
+				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(filepath.Join(assets, "css")))))
 				mux.Handle("/ws", websocket.Handler(wsHandler))
 
-				return http.Serve(nl, mux)
+				s := &http.Server{
+					Addr:    ":" + port,
+					Handler: https.EnforceTLS(mux),
+					TLSConfig: &tls.Config{
+						Certificates: certs,
+					},
+				}
+
+				log.Printf("starting http server with TLS")
+				return s.ServeTLS(nl, "", "")
 			},
 			func() error {
 				return nl.Close()
@@ -110,7 +188,7 @@ type runnererror struct {
 	err   error
 }
 
-func concurent(runners ...runner) []error {
+func run(runners ...runner) []error {
 	if len(runners) == 0 {
 		return nil
 	}

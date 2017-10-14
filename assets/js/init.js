@@ -35,7 +35,7 @@ $(function() {
 		var left = $("#button_left");
 		var right = $("#button_right");
 
-		var socket = new window.WebSocket("ws://"+window.location.host+"/ws");
+		var socket = new window.WebSocket("wss://"+window.location.host+"/ws");
 		socket.onopen = function(evt) {
 			log("WebSocket connected");
 			pad.on("touchtap", function() {
