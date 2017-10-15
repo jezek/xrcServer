@@ -6,8 +6,36 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
 )
+
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	//TODO start new passphrase timeout, is allready running, reset timer
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	secret := r.FormValue("s")
+	//TODO confront passphrase timer with phrase
+	if secret == "1234" {
+		sc := securecookie.New([]byte(""), nil)
+		//TODO expiration, user agent
+		encoded, err := sc.Encode("cookie-name", "")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		cookie := &http.Cookie{
+			Name:  "cookie-name",
+			Value: encoded,
+			Path:  "/",
+		}
+		http.SetCookie(w, cookie)
+	}
+
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+}
 
 func homeHandler(c http.ResponseWriter, req *http.Request) {
 	log.Printf("homeHandler: %v", req.URL.Path)

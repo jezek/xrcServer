@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"xgo"
 
+	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
 )
 
@@ -128,11 +129,36 @@ func main() {
 					log.Fatal("BUG: no certificates")
 				}
 
+				// secure cookie
+				//TODO comon sc name, value, hash, block
+				sc := securecookie.New([]byte(""), nil)
+
+				authenticate := func(h http.Handler) http.Handler {
+					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						cookie, err := r.Cookie("cookie-name")
+						if err != nil {
+							//TODO auth page redirect
+							http.Redirect(w, r, "auth", http.StatusUnauthorized)
+							return
+						}
+						value := ""
+						if err := sc.Decode("cookie-name", cookie.Value, &value); err != nil {
+							http.Redirect(w, r, "auth", http.StatusUnauthorized)
+							http.Error(w, err.Error(), http.StatusUnauthorized)
+							return
+						}
+						//TODO expiration check, user agent check
+						h.ServeHTTP(w, r)
+					})
+				}
+
 				mux := http.NewServeMux()
-				mux.HandleFunc("/", homeHandler)
+				mux.Handle("/", authenticate(http.HandlerFunc(homeHandler)))
+				mux.Handle("/auth", http.HandlerFunc(authHandler))
+				mux.Handle("/favicon.ico", http.FileServer(http.Dir(assets)))
 				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(filepath.Join(assets, "js")))))
 				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(filepath.Join(assets, "css")))))
-				mux.Handle("/ws", websocket.Handler(wsHandler))
+				mux.Handle("/ws", authenticate(websocket.Handler(wsHandler)))
 
 				s := &http.Server{
 					Addr:    ":" + port,
