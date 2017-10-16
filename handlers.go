@@ -37,15 +37,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
-func homeHandler(c http.ResponseWriter, req *http.Request) {
-	log.Printf("homeHandler: %v", req.URL.Path)
-	if req.URL.Path != "/" {
+func (app application) homeHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("homeHandler: %v", r.URL.Path)
+	if r.URL.Path != "/" {
 		//log.Printf("Send him file: %v", http.Dir(req.URL.Path))
 		//http.ServeFile(c, req, req.URL.Path)
 		return
 	}
-	log.Printf("homeHandler: template \"%s\"", homeTempl.Name())
-	homeTempl.Execute(c, req.Host)
+	log.Printf("homeHandler: template \"%s\"", app.homeTemplate.Name())
+	app.homeTemplate.Execute(w, r.Host)
 }
 
 type message struct {
@@ -53,7 +53,7 @@ type message struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-func wsHandler(ws *websocket.Conn) {
+func (app application) websocketHandler(ws *websocket.Conn) {
 	log.Printf("wsHandler: start")
 	defer log.Printf("wsHandler: stop")
 	defer ws.Close()
@@ -98,15 +98,15 @@ func wsHandler(ws *websocket.Conn) {
 		case "moverelative":
 			x, y := int(2*m.Data["x"].(float64)), int(2*m.Data["y"].(float64))
 			log.Printf("wsHandler: move relative x: %d, y:  %d", x, y)
-			disp.DefaultScreen().Window().Pointer().Control().MoveRelative(x, y)
+			app.display.DefaultScreen().Window().Pointer().Control().MoveRelative(x, y)
 		case "down":
 			b := m.Data["button"].(string)
 			log.Printf("wsHandler: down: %s", b)
 			switch b {
 			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().DownLeft()
+				app.display.DefaultScreen().Window().Pointer().Control().DownLeft()
 			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().DownRight()
+				app.display.DefaultScreen().Window().Pointer().Control().DownRight()
 			default:
 				log.Printf("wsHandler: down: %s unknown", b)
 			}
@@ -115,9 +115,9 @@ func wsHandler(ws *websocket.Conn) {
 			log.Printf("wsHandler: up: %s", b)
 			switch b {
 			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().UpLeft()
+				app.display.DefaultScreen().Window().Pointer().Control().UpLeft()
 			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().UpRight()
+				app.display.DefaultScreen().Window().Pointer().Control().UpRight()
 			default:
 				log.Printf("wsHandler: up: %s unknown", b)
 			}
@@ -126,9 +126,9 @@ func wsHandler(ws *websocket.Conn) {
 			log.Printf("wsHandler: click: %s", b)
 			switch b {
 			case "left":
-				disp.DefaultScreen().Window().Pointer().Control().ClickLeft()
+				app.display.DefaultScreen().Window().Pointer().Control().ClickLeft()
 			case "right":
-				disp.DefaultScreen().Window().Pointer().Control().ClickRight()
+				app.display.DefaultScreen().Window().Pointer().Control().ClickRight()
 			default:
 				log.Printf("wsHandler: click: %s unknown", b)
 			}
@@ -137,9 +137,9 @@ func wsHandler(ws *websocket.Conn) {
 			log.Printf("wsHandler: scroll: %s", dir)
 			switch dir {
 			case "down":
-				disp.DefaultScreen().Window().Pointer().Control().ScrollDown()
+				app.display.DefaultScreen().Window().Pointer().Control().ScrollDown()
 			case "up":
-				disp.DefaultScreen().Window().Pointer().Control().ScrollUp()
+				app.display.DefaultScreen().Window().Pointer().Control().ScrollUp()
 			default:
 				log.Printf("wsHandler: scroll: %s unknown", dir)
 			}
@@ -151,7 +151,7 @@ func wsHandler(ws *websocket.Conn) {
 				log.Printf("wsHandler: key: no text, or not string: %v", m.Data["text"])
 				break
 			}
-			if err := disp.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
+			if err := app.display.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
 				log.Printf("wsHandler: key: x keyboard write error: %v", err)
 				//TODO send error back
 				break

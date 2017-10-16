@@ -2,6 +2,10 @@
 $(function() {
 	log("init");
 
+	//prevent context munu cause long tap produces right click on chromiuim
+	//TODO to options
+	window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
+
 	//ttc test
 	$("#ttcpage div")
 	.ttc()
