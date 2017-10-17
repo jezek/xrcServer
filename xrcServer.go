@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -20,7 +24,6 @@ import (
 	"syscall"
 	"xgo"
 
-	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
 )
 
@@ -28,6 +31,7 @@ type application struct {
 	display              *xgo.Display
 	port, assets, config string
 	homeTemplate         *template.Template
+	certs                []tls.Certificate
 }
 
 func main() {
@@ -76,56 +80,32 @@ func main() {
 	}
 	log.Printf("xrcServer listens on port :%s", app.port)
 
+	certFile := filepath.Join(app.config, "cert.pem")
+	keyFile := filepath.Join(app.config, "key.pem")
+
+	if err := app.certificates(certFile, keyFile); err != nil {
+		log.Fatal(err)
+	}
+
 	interruptCancel := make(chan struct{})
 
 	if errors := run(
 		runner{
 			func() error {
-				certFile := filepath.Join(app.config, "cert.pem")
-				keyFile := filepath.Join(app.config, "key.pem")
-
-				certs, err := app.certs(certFile, keyFile)
-				if err != nil {
-					log.Print(err)
-					return err
-				}
-
-				// secure cookie
-				//TODO comon sc name, value, hash, block
-				sc := securecookie.New([]byte(""), nil)
-
-				authenticate := func(h http.Handler) http.Handler {
-					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						cookie, err := r.Cookie("cookie-name")
-						if err != nil {
-							//TODO auth page redirect
-							http.Redirect(w, r, "auth", http.StatusUnauthorized)
-							return
-						}
-						value := ""
-						if err := sc.Decode("cookie-name", cookie.Value, &value); err != nil {
-							http.Redirect(w, r, "auth", http.StatusUnauthorized)
-							http.Error(w, err.Error(), http.StatusUnauthorized)
-							return
-						}
-						//TODO expiration check, user agent check
-						h.ServeHTTP(w, r)
-					})
-				}
 
 				mux := http.NewServeMux()
-				mux.Handle("/", authenticate(http.HandlerFunc(app.homeHandler)))
-				mux.Handle("/auth", http.HandlerFunc(authHandler))
+				mux.Handle("/", app.authenticate(http.HandlerFunc(app.homeHandler)))
+				mux.Handle("/pair/", http.StripPrefix("/pair/", http.HandlerFunc(app.pairHandler)))
 				mux.Handle("/favicon.ico", http.FileServer(http.Dir(app.assets)))
 				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(filepath.Join(app.assets, "js")))))
 				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(filepath.Join(app.assets, "css")))))
-				mux.Handle("/ws", authenticate(websocket.Handler(app.websocketHandler)))
+				mux.Handle("/ws", app.authenticate(websocket.Handler(app.websocketHandler)))
 
 				s := &http.Server{
 					Addr:    ":" + app.port,
 					Handler: https.EnforceTLS(mux),
 					TLSConfig: &tls.Config{
-						Certificates: certs,
+						Certificates: app.certs,
 					},
 				}
 
@@ -217,7 +197,7 @@ func run(runners ...runner) []error {
 	return res
 }
 
-func (app application) certs(certFile, keyFile string) ([]tls.Certificate, error) {
+func (app *application) certificates(certFile, keyFile string) error {
 	certs := []tls.Certificate{}
 	if err := certificates.Check(certFile, keyFile); err == nil {
 		log.Printf("using https certificates (cert.pem, key.pem) from %s", app.config)
@@ -241,11 +221,11 @@ func (app application) certs(certFile, keyFile string) ([]tls.Certificate, error
 		}
 		certBlob, keyBlob, err := certificates.GenerateArrays(c)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't create certificates: %s", err)
+			return fmt.Errorf("couldn't create certificates: %s", err)
 		}
 		cert, err := tls.X509KeyPair(certBlob, keyBlob)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't load created certificates: %s", err)
+			return fmt.Errorf("couldn't load created certificates: %s", err)
 		}
 
 		if err := certificates.Save(certFile, keyFile, certBlob, keyBlob); err != nil {
@@ -258,5 +238,29 @@ func (app application) certs(certFile, keyFile string) ([]tls.Certificate, error
 		certs = append(certs, cert)
 	}
 
-	return certs, nil
+	app.certs = certs
+
+	return nil
+}
+
+func (app application) privateKey() ([]byte, error) {
+	//TODO cache
+	switch key := app.certs[0].PrivateKey.(type) {
+	case *rsa.PrivateKey:
+		return x509.MarshalPKCS1PrivateKey(key), nil
+	case *ecdsa.PrivateKey:
+		return x509.MarshalECPrivateKey(key)
+	}
+	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+}
+
+func (app application) publicKey() ([]byte, error) {
+	//TODO cache
+	switch key := app.certs[0].PrivateKey.(type) {
+	case *rsa.PrivateKey:
+		return x509.MarshalPKCS1PrivateKey(key), nil
+	case *ecdsa.PrivateKey:
+		return x509.MarshalECPrivateKey(key)
+	}
+	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
 }
