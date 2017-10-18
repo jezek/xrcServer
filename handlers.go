@@ -12,17 +12,40 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func (app application) authenticate(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pub, err := app.publicKey()
-		if err != nil {
-			log.Print(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		cookieHash := sha1.Sum(pub)
-		cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
+type appUser struct {
+	Agent string
+}
 
+func (app application) newCookie() (string, *securecookie.SecureCookie, error) {
+	//TODO cache
+	pub, err := app.publicKey()
+	if err != nil {
+		return "", nil, err
+	}
+	cookieHash := sha1.Sum(pub)
+	cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
+
+	priv, err := app.privateKey()
+	if err != nil {
+		return cookieName, nil, err
+	}
+	//TODO user password via securecookie block encryption
+	sCookie := securecookie.New(priv, nil)
+	//TODO what if i want different max age?
+	sCookie.MaxAge(3600 * 24 * 365)
+	return cookieName, sCookie, nil
+}
+
+func (app application) authenticate(h http.Handler) http.Handler {
+	cookieName, sCookie, err := app.newCookie()
+	if err != nil {
+		log.Print(err)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		})
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
 			//TODO auth page redirect
@@ -30,52 +53,41 @@ func (app application) authenticate(h http.Handler) http.Handler {
 			return
 		}
 
-		priv, err := app.privateKey()
-		if err != nil {
-			log.Print(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		sc := securecookie.New(priv, nil)
-		sc.MaxAge(3600 * 24 * 365)
-		value := ""
-		if err := sc.Decode(cookieName, cookie.Value, &value); err != nil {
+		user := appUser{}
+		if err := sCookie.Decode(cookieName, cookie.Value, &user); err != nil {
 			http.Redirect(w, r, "pair", http.StatusUnauthorized)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		//TODO user agent check
+
+		if user.Agent != r.UserAgent() {
+			//TODO user agent is veery similiar ... maybe update? (if user uses password, update agent)
+			http.Redirect(w, r, "pair", http.StatusUnauthorized)
+			http.Error(w, "UserAgent changed!", http.StatusUnauthorized)
+			return
+		}
 		h.ServeHTTP(w, r)
 	})
 }
 
 func (app application) pairHandler(w http.ResponseWriter, r *http.Request) {
+	cookieName, sCookie, err := app.newCookie()
+	if err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	//TODO start new passphrase timeout, is allready running, reset timer
 	secret := r.URL.Path
 
 	//TODO confront passphrase timer with phrase
 	if secret != "" {
 		if secret == "1234" {
-			pub, err := app.publicKey()
-			if err != nil {
-				log.Print(err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+
+			user := appUser{
+				Agent: r.UserAgent(),
 			}
-			cookieHash := sha1.Sum(pub)
-			cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
-			log.Printf("cookieName: %v", cookieName)
-			priv, err := app.privateKey()
-			if err != nil {
-				log.Print(err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			sc := securecookie.New(priv, nil)
-			//TODO user agent
-			//TODO fork securecookie and make encode and then encrypt whole cookie
-			encoded, err := sc.Encode(cookieName, "")
+			encoded, err := sCookie.Encode(cookieName, user)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -87,9 +99,11 @@ func (app application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			http.SetCookie(w, cookie)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			log.Print("pairHandler: paired")
 			return
 		}
 		http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
+		log.Print("pairHandler: wrong secret")
 		return
 	}
 
