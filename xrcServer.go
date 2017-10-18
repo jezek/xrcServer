@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -21,7 +23,9 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 	"xgo"
 
 	"golang.org/x/net/websocket"
@@ -32,6 +36,10 @@ type application struct {
 	port, assets, config string
 	homeTemplate         *template.Template
 	certs                []tls.Certificate
+
+	authMx       *sync.Mutex
+	authPassword []byte
+	authExpire   time.Time
 }
 
 func main() {
@@ -48,7 +56,9 @@ func main() {
 	}
 	defer log.Printf("bye")
 
-	app := application{}
+	app := application{
+		authMx: &sync.Mutex{},
+	}
 
 	// Flags
 	flag.StringVar(&app.port, "p", "10905", "http service port")
@@ -243,7 +253,7 @@ func (app *application) certificates(certFile, keyFile string) error {
 	return nil
 }
 
-func (app application) privateKey() ([]byte, error) {
+func (app *application) privateKey() ([]byte, error) {
 	//TODO cache
 	switch key := app.certs[0].PrivateKey.(type) {
 	case *rsa.PrivateKey:
@@ -254,7 +264,7 @@ func (app application) privateKey() ([]byte, error) {
 	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
 }
 
-func (app application) publicKey() ([]byte, error) {
+func (app *application) publicKey() ([]byte, error) {
 	//TODO cache
 	switch key := app.certs[0].PrivateKey.(type) {
 	case *rsa.PrivateKey:
@@ -263,4 +273,50 @@ func (app application) publicKey() ([]byte, error) {
 		return x509.MarshalECPrivateKey(key)
 	}
 	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+}
+
+func (app *application) authNewPassword() ([]byte, error) {
+	app.authMx.Lock()
+	defer app.authMx.Unlock()
+
+	// expired
+	if app.authPassword != nil && app.authExpire.Before(time.Now()) {
+		app.authPassword = nil
+		log.Print("authNewPassword: expired")
+	}
+
+	if app.authPassword == nil {
+		app.authPassword = make([]byte, 8)
+		_, err := rand.Read(app.authPassword)
+		if err != nil {
+			return nil, err
+		}
+		log.Print("authNewPassword: new created")
+	}
+
+	app.authExpire = time.Now().Add(time.Minute)
+	return app.authPassword, nil
+}
+
+func (app *application) authClearPassword() {
+	app.authMx.Lock()
+	defer app.authMx.Unlock()
+	app.authPassword = nil
+	log.Print("authClearPassword: cleared")
+}
+
+func (app *application) auth(b []byte) bool {
+	defer app.authClearPassword()
+	app.authMx.Lock()
+	defer app.authMx.Unlock()
+
+	if app.authPassword == nil {
+		return false
+	}
+	if app.authExpire.Before(time.Now()) {
+		// expired
+		log.Print("auth: expired")
+		return false
+	}
+	return bytes.Equal(app.authPassword, b)
 }

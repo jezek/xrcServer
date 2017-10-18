@@ -3,9 +3,12 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/securecookie"
@@ -16,7 +19,7 @@ type appUser struct {
 	Agent string
 }
 
-func (app application) newCookie() (string, *securecookie.SecureCookie, error) {
+func (app *application) newCookie() (string, *securecookie.SecureCookie, error) {
 	//TODO cache
 	pub, err := app.publicKey()
 	if err != nil {
@@ -36,7 +39,8 @@ func (app application) newCookie() (string, *securecookie.SecureCookie, error) {
 	return cookieName, sCookie, nil
 }
 
-func (app application) authenticate(h http.Handler) http.Handler {
+func (app *application) authenticate(h http.Handler) http.Handler {
+	log.Print("authenticate")
 	cookieName, sCookie, err := app.newCookie()
 	if err != nil {
 		log.Print(err)
@@ -46,6 +50,7 @@ func (app application) authenticate(h http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Print("authenticate: handle")
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
 			//TODO auth page redirect
@@ -70,7 +75,7 @@ func (app application) authenticate(h http.Handler) http.Handler {
 	})
 }
 
-func (app application) pairHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	cookieName, sCookie, err := app.newCookie()
 	if err != nil {
 		log.Print(err)
@@ -78,12 +83,16 @@ func (app application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//TODO start new passphrase timeout, is allready running, reset timer
-	secret := r.URL.Path
+	passphrase := r.URL.Path
 
 	//TODO confront passphrase timer with phrase
-	if secret != "" {
-		if secret == "1234" {
-
+	if passphrase != "" {
+		password, err := hex.DecodeString(passphrase)
+		if err != nil {
+			log.Printf("pairHandler: decoding passphrase error: %s", err)
+			app.authClearPassword()
+		}
+		if err == nil && app.auth(password) {
 			user := appUser{
 				Agent: r.UserAgent(),
 			}
@@ -103,14 +112,26 @@ func (app application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
-		log.Print("pairHandler: wrong secret")
+		log.Print("pairHandler: wrong passphrase")
+		//TODO user misses passphrase for more times, block
 		return
 	}
+
+	password, err := app.authNewPassword()
+	if err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println(strings.Repeat("*", 30))
+	//TODO split passphrase to improve readability
+	fmt.Println("Passphrase:", hex.EncodeToString(password))
+	fmt.Println(strings.Repeat("*", 30))
 
 	w.Write([]byte("TODO pair form"))
 }
 
-func (app application) homeHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("homeHandler: %v", r.URL.Path)
 	if r.URL.Path != "/" {
 		//log.Printf("Send him file: %v", http.Dir(req.URL.Path))
@@ -126,7 +147,7 @@ type message struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-func (app application) websocketHandler(ws *websocket.Conn) {
+func (app *application) websocketHandler(ws *websocket.Conn) {
 	log.Printf("wsHandler: start")
 	defer log.Printf("wsHandler: stop")
 	defer ws.Close()
