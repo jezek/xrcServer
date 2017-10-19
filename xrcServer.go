@@ -65,7 +65,7 @@ func main() {
 	flag.StringVar(&app.assets, "d", "assets", "working dir")
 	flag.StringVar(&app.config, "c", "~/.config/xrcServer", "configuration dir")
 	flag.Parse()
-	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.html")))
+	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
 
 	if strings.HasPrefix(app.config, "~") {
 		user, err := user.Current()
@@ -104,6 +104,9 @@ func main() {
 			func() error {
 
 				mux := http.NewServeMux()
+				mux.Handle("/ping", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.Write([]byte("pong"))
+				}))
 				mux.Handle("/", app.authenticate(http.HandlerFunc(app.homeHandler)))
 				mux.Handle("/pair/", http.StripPrefix("/pair/", http.HandlerFunc(app.pairHandler)))
 				mux.Handle("/favicon.ico", http.FileServer(http.Dir(app.assets)))

@@ -2,12 +2,12 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-inoremap <silent> <Plug>(neocomplete_auto_refresh) =neocomplete#mappings#refresh()
-inoremap <silent> <Plug>(neocomplete_start_manual_complete) =neocomplete#mappings#manual_complete()
-inoremap <silent> <Plug>(neocomplete_start_auto_complete) =neocomplete#mappings#auto_complete()
-inoremap <silent> <Plug>(neocomplete_start_omni_complete) 
-inoremap <silent> <expr> <Plug>(neocomplete_start_unite_quick_match) unite#sources#neocomplete#start_quick_match()
 inoremap <silent> <expr> <Plug>(neocomplete_start_unite_complete) unite#sources#neocomplete#start_complete()
+inoremap <silent> <expr> <Plug>(neocomplete_start_unite_quick_match) unite#sources#neocomplete#start_quick_match()
+inoremap <silent> <Plug>(neocomplete_start_omni_complete) 
+inoremap <silent> <Plug>(neocomplete_start_auto_complete) =neocomplete#mappings#auto_complete()
+inoremap <silent> <Plug>(neocomplete_start_manual_complete) =neocomplete#mappings#manual_complete()
+inoremap <silent> <Plug>(neocomplete_auto_refresh) =neocomplete#mappings#refresh()
 map! <S-Insert> <MiddleMouse>
 inoremap <silent> <expr> <Plug>(neosnippet_start_unite_snippet) unite#sources#neosnippet#start_complete()
 inoremap <silent> <expr> <Plug>(neosnippet_jump) neosnippet#mappings#jump_impl()
@@ -27,13 +27,13 @@ map  l
 map  :cprevious
 map  :cnext
 nmap  :w
-nmap ,s <Plug>(go-implements)
-nmap ,v <Plug>(go-def-vertical)
-nmap ,l <Plug>(go-metalinter)
-nmap ,i <Plug>(go-info)
-nmap ,d <Plug>(go-doc)
-nmap ,r <Plug>(go-run)
 nmap ,t <Plug>(go-test)
+nmap ,r <Plug>(go-run)
+nmap ,d <Plug>(go-doc)
+nmap ,i <Plug>(go-info)
+nmap ,l <Plug>(go-metalinter)
+nmap ,v <Plug>(go-def-vertical)
+nmap ,s <Plug>(go-implements)
 nmap ,f <Plug>(go-test-func)
 nmap ,e <Plug>(go-rename)
 nnoremap ,a :cclose
@@ -45,53 +45,53 @@ nmap gx <Plug>NetrwBrowseX
 noremap j gj
 noremap k gk
 nnoremap n nzzzv
-nnoremap <silent> <Plug>(go-alternate-split) :call go#alternate#Switch(0, "split")
-nnoremap <silent> <Plug>(go-alternate-vertical) :call go#alternate#Switch(0, "vsplit")
-nnoremap <silent> <Plug>(go-alternate-edit) :call go#alternate#Switch(0, "edit")
-nnoremap <silent> <Plug>(go-vet) :call go#lint#Vet(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-lint) :call go#lint#Golint()
-nnoremap <silent> <Plug>(go-metalinter) :call go#lint#Gometa(0)
-nnoremap <silent> <Plug>(go-doc-browser) :call go#doc#OpenBrowser()
-nnoremap <silent> <Plug>(go-doc-split) :call go#doc#Open("new", "split")
-nnoremap <silent> <Plug>(go-doc-vertical) :call go#doc#Open("vnew", "vsplit")
-nnoremap <silent> <Plug>(go-doc-tab) :call go#doc#Open("tabnew", "tabe")
-nnoremap <silent> <Plug>(go-doc) :call go#doc#Open("new", "split")
-nnoremap <silent> <Plug>(go-def-stack-clear) :call go#def#StackClear()
-nnoremap <silent> <Plug>(go-def-stack) :call go#def#Stack()
-nnoremap <silent> <Plug>(go-def-pop) :call go#def#StackPop()
-nnoremap <silent> <Plug>(go-def-tab) :call go#def#Jump("tab")
-nnoremap <silent> <Plug>(go-def-split) :call go#def#Jump("split")
-nnoremap <silent> <Plug>(go-def-vertical) :call go#def#Jump("vsplit")
-nnoremap <silent> <Plug>(go-def) :call go#def#Jump('')
-nnoremap <silent> <Plug>(go-rename) :call go#rename#Rename(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-sameids-toggle) :call go#guru#ToggleSameIds()
-nnoremap <silent> <Plug>(go-whicherrs) :call go#guru#Whicherrs(-1)
-nnoremap <silent> <Plug>(go-sameids) :call go#guru#SameIds()
-nnoremap <silent> <Plug>(go-referrers) :call go#guru#Referrers(-1)
-nnoremap <silent> <Plug>(go-channelpeers) :call go#guru#ChannelPeers(-1)
-xnoremap <silent> <Plug>(go-freevars) :call go#guru#Freevars(0)
-nnoremap <silent> <Plug>(go-callstack) :call go#guru#Callstack(-1)
-nnoremap <silent> <Plug>(go-describe) :call go#guru#Describe(-1)
-nnoremap <silent> <Plug>(go-callers) :call go#guru#Callers(-1)
-nnoremap <silent> <Plug>(go-callees) :call go#guru#Callees(-1)
-nnoremap <silent> <Plug>(go-implements) :call go#guru#Implements(-1)
-nnoremap <silent> <Plug>(go-imports) :call go#fmt#Format(1)
-nnoremap <silent> <Plug>(go-import) :call go#import#SwitchImport(1, '', expand('<cword>'), '')
-nnoremap <silent> <Plug>(go-info) :call go#tool#Info(0)
-nnoremap <silent> <Plug>(go-deps) :call go#tool#Deps()
-nnoremap <silent> <Plug>(go-files) :call go#tool#Files()
-nnoremap <silent> <Plug>(go-coverage-browser) :call go#coverage#Browser(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-coverage-toggle) :call go#coverage#BufferToggle(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-coverage-clear) :call go#coverage#Clear()
-nnoremap <silent> <Plug>(go-coverage) :call go#coverage#Buffer(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-test-compile) :call go#test#Test(!g:go_jump_to_error, 1)
-nnoremap <silent> <Plug>(go-test-func) :call go#test#Func(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-test) :call go#test#Test(!g:go_jump_to_error, 0)
-nnoremap <silent> <Plug>(go-install) :call go#cmd#Install(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-generate) :call go#cmd#Generate(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-build) :call go#cmd#Build(!g:go_jump_to_error)
-nnoremap <silent> <Plug>(go-run) :call go#cmd#Run(!g:go_jump_to_error)
 nnoremap <SNR>41_: :=v:count ? v:count : ''
+nnoremap <silent> <Plug>(go-run) :call go#cmd#Run(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-build) :call go#cmd#Build(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-generate) :call go#cmd#Generate(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-install) :call go#cmd#Install(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-test) :call go#test#Test(!g:go_jump_to_error, 0)
+nnoremap <silent> <Plug>(go-test-func) :call go#test#Func(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-test-compile) :call go#test#Test(!g:go_jump_to_error, 1)
+nnoremap <silent> <Plug>(go-coverage) :call go#coverage#Buffer(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-coverage-clear) :call go#coverage#Clear()
+nnoremap <silent> <Plug>(go-coverage-toggle) :call go#coverage#BufferToggle(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-coverage-browser) :call go#coverage#Browser(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-files) :call go#tool#Files()
+nnoremap <silent> <Plug>(go-deps) :call go#tool#Deps()
+nnoremap <silent> <Plug>(go-info) :call go#tool#Info(0)
+nnoremap <silent> <Plug>(go-import) :call go#import#SwitchImport(1, '', expand('<cword>'), '')
+nnoremap <silent> <Plug>(go-imports) :call go#fmt#Format(1)
+nnoremap <silent> <Plug>(go-implements) :call go#guru#Implements(-1)
+nnoremap <silent> <Plug>(go-callees) :call go#guru#Callees(-1)
+nnoremap <silent> <Plug>(go-callers) :call go#guru#Callers(-1)
+nnoremap <silent> <Plug>(go-describe) :call go#guru#Describe(-1)
+nnoremap <silent> <Plug>(go-callstack) :call go#guru#Callstack(-1)
+xnoremap <silent> <Plug>(go-freevars) :call go#guru#Freevars(0)
+nnoremap <silent> <Plug>(go-channelpeers) :call go#guru#ChannelPeers(-1)
+nnoremap <silent> <Plug>(go-referrers) :call go#guru#Referrers(-1)
+nnoremap <silent> <Plug>(go-sameids) :call go#guru#SameIds()
+nnoremap <silent> <Plug>(go-whicherrs) :call go#guru#Whicherrs(-1)
+nnoremap <silent> <Plug>(go-sameids-toggle) :call go#guru#ToggleSameIds()
+nnoremap <silent> <Plug>(go-rename) :call go#rename#Rename(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-def) :call go#def#Jump('')
+nnoremap <silent> <Plug>(go-def-vertical) :call go#def#Jump("vsplit")
+nnoremap <silent> <Plug>(go-def-split) :call go#def#Jump("split")
+nnoremap <silent> <Plug>(go-def-tab) :call go#def#Jump("tab")
+nnoremap <silent> <Plug>(go-def-pop) :call go#def#StackPop()
+nnoremap <silent> <Plug>(go-def-stack) :call go#def#Stack()
+nnoremap <silent> <Plug>(go-def-stack-clear) :call go#def#StackClear()
+nnoremap <silent> <Plug>(go-doc) :call go#doc#Open("new", "split")
+nnoremap <silent> <Plug>(go-doc-tab) :call go#doc#Open("tabnew", "tabe")
+nnoremap <silent> <Plug>(go-doc-vertical) :call go#doc#Open("vnew", "vsplit")
+nnoremap <silent> <Plug>(go-doc-split) :call go#doc#Open("new", "split")
+nnoremap <silent> <Plug>(go-doc-browser) :call go#doc#OpenBrowser()
+nnoremap <silent> <Plug>(go-metalinter) :call go#lint#Gometa(0)
+nnoremap <silent> <Plug>(go-lint) :call go#lint#Golint()
+nnoremap <silent> <Plug>(go-vet) :call go#lint#Vet(!g:go_jump_to_error)
+nnoremap <silent> <Plug>(go-alternate-edit) :call go#alternate#Switch(0, "edit")
+nnoremap <silent> <Plug>(go-alternate-vertical) :call go#alternate#Switch(0, "vsplit")
+nnoremap <silent> <Plug>(go-alternate-split) :call go#alternate#Switch(0, "split")
 map <S-Insert> <MiddleMouse>
 vnoremap <silent> <Plug>NetrwBrowseXVis :call netrw#BrowseXVis()
 nnoremap <silent> <Plug>NetrwBrowseX :call netrw#BrowseX(expand((exists("g:netrw_gx")? g:netrw_gx : '<cfile>')),netrw#CheckIfRemote())
@@ -184,8 +184,7 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +94 xrcServer.go
-badd +1 assets/index.html
+badd +1 xrcServer.go
 badd +1 assets/css/style.css
 badd +1 assets/js/init.js
 badd +1 assets/js/TouchPad.js
@@ -195,7 +194,8 @@ badd +1 assets/js/KeyModifiers.js
 badd +1 assets/js/helpers.js
 badd +1 assets/js/Tabs.js
 badd +1 assets/js/Keys.js
-badd +0 handlers.go
+badd +1 handlers.go
+badd +0 assets/index.tmpl
 argglobal
 silent! argdel *
 set stal=2
@@ -207,8 +207,8 @@ vsplit
 wincmd w
 wincmd t
 set winheight=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 75 + 74) / 149)
-exe 'vert 2resize ' . ((&columns * 73 + 74) / 149)
+exe 'vert 1resize ' . ((&columns * 40 + 74) / 149)
+exe 'vert 2resize ' . ((&columns * 108 + 74) / 149)
 argglobal
 nnoremap <buffer> <silent>  :call go#def#StackPop(v:count1)
 nnoremap <buffer> <silent> ] :call go#def#Jump("split")
@@ -345,7 +345,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 94 - ((39 * winheight(0) + 22) / 45)
+let s:l = 94 - ((36 * winheight(0) + 22) / 45)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -497,9 +497,9 @@ normal! zt
 normal! 0
 wincmd w
 2wincmd w
-exe 'vert 1resize ' . ((&columns * 75 + 74) / 149)
-exe 'vert 2resize ' . ((&columns * 73 + 74) / 149)
-tabedit assets/index.html
+exe 'vert 1resize ' . ((&columns * 40 + 74) / 149)
+exe 'vert 2resize ' . ((&columns * 108 + 74) / 149)
+tabedit assets/index.tmpl
 set splitbelow splitright
 wincmd _ | wincmd |
 vsplit
@@ -507,10 +507,8 @@ vsplit
 wincmd w
 wincmd t
 set winheight=1 winwidth=1
-exe '1resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 54 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 25 + 74) / 149)
+exe 'vert 1resize ' . ((&columns * 66 + 74) / 149)
+exe 'vert 2resize ' . ((&columns * 82 + 74) / 149)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -525,7 +523,7 @@ setlocal buflisted
 setlocal buftype=
 setlocal nocindent
 setlocal cinkeys=0{,0},0),:,0#,!^F,o,O,e
-setlocal cinoptions=
+setlocal cinoptions=j1,J1
 setlocal cinwords=if,else,while,do,for,switch
 setlocal colorcolumn=
 setlocal comments=s:<!--,m:\ \ \ \ ,e:-->
@@ -547,8 +545,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal noexpandtab
-if &filetype != 'html'
-setlocal filetype=html
+if &filetype != 'gohtmltmpl'
+setlocal filetype=gohtmltmpl
 endif
 setlocal fixendofline
 setlocal foldcolumn=0
@@ -570,8 +568,8 @@ setlocal iminsert=2
 setlocal imsearch=2
 setlocal include=
 setlocal includeexpr=
-setlocal indentexpr=HtmlIndent()
-setlocal indentkeys=o,O,<Return>,<>>,{,},!^F
+setlocal indentexpr=GetGoHTMLTmplIndent(v:lnum)
+setlocal indentkeys=o,O,<Return>,<>>,{,},!^F,=else,=end
 setlocal noinfercase
 setlocal iskeyword=@,48-57,_,192-255
 setlocal keywordprg=
@@ -600,7 +598,7 @@ setlocal noscrollbind
 setlocal shiftwidth=2
 setlocal noshortname
 setlocal signcolumn=auto
-setlocal nosmartindent
+setlocal smartindent
 setlocal softtabstop=0
 setlocal nospell
 setlocal spellcapcheck=[.?!]\\_[\\])'\"\	\ ]\\+
@@ -610,8 +608,8 @@ setlocal statusline=%!airline#statusline(1)
 setlocal suffixesadd=
 setlocal noswapfile
 setlocal synmaxcol=3000
-if &syntax != 'html'
-setlocal syntax=html
+if &syntax != 'gohtmltmpl'
+setlocal syntax=gohtmltmpl
 endif
 setlocal tabstop=2
 setlocal tagcase=
@@ -625,7 +623,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 22) / 45)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -747,17 +745,15 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 22) / 45)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe '1resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 54 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 25 + 74) / 149)
+exe 'vert 1resize ' . ((&columns * 66 + 74) / 149)
+exe 'vert 2resize ' . ((&columns * 82 + 74) / 149)
 tabedit assets/js/init.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -766,10 +762,10 @@ vsplit
 wincmd w
 wincmd t
 set winheight=1 winwidth=1
-exe '1resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 51 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 28 + 74) / 149)
+exe '1resize ' . ((&lines * 8 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 64 + 74) / 149)
+exe '2resize ' . ((&lines * 8 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 15 + 74) / 149)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -884,7 +880,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 4) / 8)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1006,17 +1002,17 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 4) / 8)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe '1resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 51 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 28 + 74) / 149)
+exe '1resize ' . ((&lines * 8 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 64 + 74) / 149)
+exe '2resize ' . ((&lines * 8 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 15 + 74) / 149)
 tabedit assets/js/Tabs.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -1029,12 +1025,12 @@ split
 wincmd w
 wincmd t
 set winheight=1 winwidth=1
-exe '1resize ' . ((&lines * 22 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 29 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 50 + 74) / 149)
-exe '3resize ' . ((&lines * 10 + 23) / 47)
-exe 'vert 3resize ' . ((&columns * 50 + 74) / 149)
+exe '1resize ' . ((&lines * 15 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 52 + 74) / 149)
+exe '2resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 27 + 74) / 149)
+exe '3resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 27 + 74) / 149)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -1149,7 +1145,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 11) / 22)
+let s:l = 1 - ((0 * winheight(0) + 7) / 15)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1271,7 +1267,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 3) / 7)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1393,19 +1389,19 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 10)
+let s:l = 1 - ((0 * winheight(0) + 3) / 7)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe '1resize ' . ((&lines * 22 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 29 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 50 + 74) / 149)
-exe '3resize ' . ((&lines * 10 + 23) / 47)
-exe 'vert 3resize ' . ((&columns * 50 + 74) / 149)
+exe '1resize ' . ((&lines * 15 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 52 + 74) / 149)
+exe '2resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 27 + 74) / 149)
+exe '3resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 27 + 74) / 149)
 tabedit assets/js/KeyInput.js
 set splitbelow splitright
 wincmd _ | wincmd |
@@ -1418,12 +1414,12 @@ split
 wincmd w
 wincmd t
 set winheight=1 winwidth=1
-exe '1resize ' . ((&lines * 22 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 29 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 50 + 74) / 149)
-exe '3resize ' . ((&lines * 10 + 23) / 47)
-exe 'vert 3resize ' . ((&columns * 50 + 74) / 149)
+exe '1resize ' . ((&lines * 15 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 52 + 74) / 149)
+exe '2resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 27 + 74) / 149)
+exe '3resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 27 + 74) / 149)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -1538,7 +1534,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 11) / 22)
+let s:l = 1 - ((0 * winheight(0) + 7) / 15)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1660,7 +1656,7 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 11)
+let s:l = 1 - ((0 * winheight(0) + 3) / 7)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
@@ -1782,19 +1778,19 @@ setlocal nowinfixwidth
 set nowrap
 setlocal nowrap
 setlocal wrapmargin=0
-let s:l = 1 - ((0 * winheight(0) + 5) / 10)
+let s:l = 1 - ((0 * winheight(0) + 3) / 7)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
 1
 normal! 0
 wincmd w
-exe '1resize ' . ((&lines * 22 + 23) / 47)
-exe 'vert 1resize ' . ((&columns * 29 + 74) / 149)
-exe '2resize ' . ((&lines * 11 + 23) / 47)
-exe 'vert 2resize ' . ((&columns * 50 + 74) / 149)
-exe '3resize ' . ((&lines * 10 + 23) / 47)
-exe 'vert 3resize ' . ((&columns * 50 + 74) / 149)
+exe '1resize ' . ((&lines * 15 + 23) / 47)
+exe 'vert 1resize ' . ((&columns * 52 + 74) / 149)
+exe '2resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 27 + 74) / 149)
+exe '3resize ' . ((&lines * 7 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 27 + 74) / 149)
 tabnext 1
 set stal=1
 if exists('s:wipebuf')

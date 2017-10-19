@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -16,7 +18,8 @@ import (
 )
 
 type appUser struct {
-	Agent string
+	Agent     string `json:"-"`
+	ActiveTab uint   `json:"activeTab"`
 }
 
 func (app *application) newCookie() (string, *securecookie.SecureCookie, error) {
@@ -40,7 +43,7 @@ func (app *application) newCookie() (string, *securecookie.SecureCookie, error) 
 }
 
 func (app *application) authenticate(h http.Handler) http.Handler {
-	log.Print("authenticate")
+	//log.Print("authenticate")
 	cookieName, sCookie, err := app.newCookie()
 	if err != nil {
 		log.Print(err)
@@ -50,7 +53,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print("authenticate: handle")
+		//log.Print("authenticate: handle")
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
 			//TODO auth page redirect
@@ -71,7 +74,9 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 			http.Error(w, "UserAgent changed!", http.StatusUnauthorized)
 			return
 		}
-		h.ServeHTTP(w, r)
+
+		ctx := context.WithValue(r.Context(), appUser{}, user)
+		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -132,14 +137,42 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("homeHandler: %v", r.URL.Path)
+	//log.Printf("homeHandler: %v", r.URL.Path)
+
 	if r.URL.Path != "/" {
-		//log.Printf("Send him file: %v", http.Dir(req.URL.Path))
-		//http.ServeFile(c, req, req.URL.Path)
+		http.NotFound(w, r)
 		return
 	}
-	log.Printf("homeHandler: template \"%s\"", app.homeTemplate.Name())
-	app.homeTemplate.Execute(w, r.Host)
+
+	user, ok := r.Context().Value(appUser{}).(appUser)
+	if !ok {
+		txt := "No user context"
+		log.Print(txt)
+		http.Error(w, txt, http.StatusInternalServerError)
+		return
+	}
+
+	userConfig, err := json.Marshal(user)
+	if err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		UserConfig template.JS
+	}{
+		template.JS(string(userConfig)),
+	}
+
+	//log.Printf("homeHandler: template \"%s\"", app.homeTemplate.Name())
+	//log.Printf("homeHandler: template data: %#v", data)
+	if err := app.homeTemplate.Execute(w, data); err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Authourized user served: %s", r.Host)
 }
 
 type message struct {
