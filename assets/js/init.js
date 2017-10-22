@@ -1,10 +1,11 @@
+//require jQuery
 //require helpers.js
 $(function() {
 	log("init");
 
 	//prevent context munu cause long tap produces right click on chromiuim
 	//TODO to options
-	window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
+	window.addEventListener("contextmenu", function(e) { e.preventDefault(); });
 
 	//ttc test
 	$("#ttcpage div")
@@ -42,6 +43,11 @@ $(function() {
 		var socket = new window.WebSocket("wss://"+window.location.host+"/ws");
 		socket.onopen = function(evt) {
 			log("WebSocket connected");
+
+			if (typeof(userConfig) == "object") {
+				userConfig.socket = socket;
+			}
+
 			pad.on("touchtap", function() {
 				log("pad on: touchtap");
 				socket.send(JSON.stringify({
@@ -229,7 +235,7 @@ $(function() {
 					modifiers.message(m.data);
 					break;
 				default:
-					log("unknown \"type\": "+d.type);
+					log("unknown \"type\": "+m.type);
 			}
 		};
 	}

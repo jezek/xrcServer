@@ -1,3 +1,4 @@
+//require jQuery
 function xpath(el) {
   if (typeof el == "string") return document.evaluate(el, document, null, 0, null);
   if (!el || el.nodeType != 1) return '';

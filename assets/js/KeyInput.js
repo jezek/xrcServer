@@ -1,3 +1,4 @@
+//require jQuery
 //require helpers.js
 var keyinputs = {
 	socket: null,
@@ -224,7 +225,7 @@ function keyinput(socket, elm, name, opt) {
 		  .animate({borderColor:"initial"}, 400, "swing", function() {
 				$(this)
 					.attr("placeholder", "")
-					.css({borderColor:"initial"})
+					.css({borderColor:"initial"});
 			});
 	};
 

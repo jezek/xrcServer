@@ -1,3 +1,4 @@
+//require jQuery
 function TouchButton(elm, opt) {
 	this.elm = $(elm);
 

@@ -27,8 +27,6 @@ import (
 	"syscall"
 	"time"
 	"xgo"
-
-	"golang.org/x/net/websocket"
 )
 
 type application struct {
@@ -112,7 +110,8 @@ func main() {
 				mux.Handle("/favicon.ico", http.FileServer(http.Dir(app.assets)))
 				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(filepath.Join(app.assets, "js")))))
 				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(filepath.Join(app.assets, "css")))))
-				mux.Handle("/ws", app.authenticate(websocket.Handler(app.websocketHandler)))
+				//mux.Handle("/ws", app.authenticate(websocket.Handler(app.websocketHandler)))
+				mux.Handle("/ws", app.authenticate(http.HandlerFunc(app.websocketHandler)))
 
 				s := &http.Server{
 					Addr:    ":" + app.port,

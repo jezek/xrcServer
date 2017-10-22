@@ -1,3 +1,4 @@
+//require jQuery
 //require helpers.js, KeyModifiers.js
 //uses touchtoclick
 var keys = {

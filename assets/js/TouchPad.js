@@ -1,3 +1,4 @@
+//require jQuery
 function TouchPad(elm, opt) {
 	this.elm = $(elm);
 

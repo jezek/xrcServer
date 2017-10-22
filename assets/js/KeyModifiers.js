@@ -1,3 +1,4 @@
+//require jQuery
 //require helpers.js
 var modifiers = {
 	modifier: {},
