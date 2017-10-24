@@ -218,7 +218,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 			}
 		}()
 
-		var msg string
+		var msg []byte
 		for {
 			if err := websocket.Message.Receive(ws, &msg); err != nil {
 				log.Printf("wsHandler: recieve error: %s", err)
@@ -226,7 +226,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 			}
 			//log.Printf("wsHandler: recieved message: %s", msg)
 			m := message{}
-			if err := json.Unmarshal([]byte(msg), &m); err != nil {
+			if err := json.Unmarshal(msg, &m); err != nil {
 				log.Printf("wsHandler: unmarshal error: %s", err)
 				break
 			}
@@ -295,19 +295,21 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 				}
 				send <- []byte(msg)
 			case "cookieConfig":
-				log.Printf("wsHandler: cookieConfig: %#v", m.Data)
+				log.Printf("wsHandler: cookieConfig: %s", m.Data["updates"])
 				sendError := func(ch chan<- []byte, errStr string) {
+					//log.Printf("wsHandler: cookieConfig: sendError: %s", errStr)
 					msg := message{m.Type, make(map[string]interface{})}
 					if u, ok := m.Data["updates"]; ok {
 						msg.Data["updates"] = u
 					}
 					msg.Data["error"] = errStr
-					msgBytes, err := json.Marshal(m)
+					msgBytes, err := json.Marshal(msg)
 					if err != nil {
-						log.Printf("wsHandler: cookieConfig: message marshal error: %s", err)
+						log.Printf("wsHandler: cookieConfig: sendError: message marshal error: %s", err)
 						return
 					}
 					send <- msgBytes
+					log.Printf("wsHandler: cookieConfig: sendError: sent: %#v", msg)
 				}
 
 				cfgStr, ok := m.Data["config"].(string)
@@ -315,7 +317,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					sendError(send, fmt.Sprintf("cookieConfig.config is not a string: %s", reflect.TypeOf(m.Data["config"])))
 					break
 				}
-				if err := json.Unmarshal([]byte(cfgStr), user); err != nil {
+				if err := json.Unmarshal([]byte(cfgStr), &user); err != nil {
 					sendError(send, fmt.Sprintf("cookieConfig.config json unmarshal error: %s", err))
 					break
 				}
@@ -330,21 +332,34 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					sendError(send, err.Error())
 					break
 				}
-				m.Data["cookie"] = map[string]interface{}{
-					"name":  cookieName,
-					"value": encoded,
+				userConfig, err := json.Marshal(user)
+				if err != nil {
+					sendError(send, err.Error())
+					break
 				}
-				m.Data["test"] = "test"
-				m.Data["config"] = user
+				msg := message{
+					Type: m.Type,
+					Data: map[string]interface{}{
+						"config": userConfig,
+						"cookie": map[string]interface{}{
+							"name":  cookieName,
+							"value": encoded,
+						},
+						"test": "test",
+					},
+				}
+				if u, ok := m.Data["updates"]; ok {
+					msg.Data["updates"] = u
+				}
 
-				log.Printf("wsHandler: cookieConfig: returning: %#v", m)
-				//TODO not working, m.Data does not contain test
-				msgBytes, err := json.Marshal(m)
+				//log.Printf("wsHandler: cookieConfig: returning: %#v", msg)
+				msgBytes, err := json.Marshal(msg)
 				if err != nil {
 					log.Printf("wsHandler: cookieConfig: message marshal error: %s", err)
-					return
+					break
 				}
 				send <- msgBytes
+				log.Printf("wsHandler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
 
 			default:
 				log.Printf("wsHandler: unknown type: %s", m.Type)

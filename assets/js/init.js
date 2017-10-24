@@ -5,7 +5,10 @@ $(function() {
 
 	//prevent context munu cause long tap produces right click on chromiuim
 	//TODO to options
-	window.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+	//window.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+	$(".page").on("contextmenu", function(e) {
+		e.preventDefault();
+	});
 
 	//ttc test
 	$("#ttcpage div")
@@ -216,9 +219,10 @@ $(function() {
 		};
 		socket.onmessage = function(evt) {
 			m = jQuery.parseJSON(evt.data);
-			log("WebSocket read: <code>"+evt.data+"</code>");
+			log("WebSocket message");
+			//log("WebSocket read: <code>"+evt.data+"</code>");
 			if (typeof m.type != "string") {
-				log("no \"type\" in message", {level:1});
+				log("no \"type\" in message", {level:1, color:"red"});
 				return;
 			}
 			switch (m.type) {
@@ -233,6 +237,10 @@ $(function() {
 				case "modifier":
 					log("got \"modifier\": "+m.data.name, {level:1});
 					modifiers.message(m.data);
+					break;
+				case "cookieConfig":
+					log("got \"cookieConfig\": "+m.data.updates, {level:1});
+					userConfig.message(m.data);
 					break;
 				default:
 					log("unknown \"type\": "+m.type);

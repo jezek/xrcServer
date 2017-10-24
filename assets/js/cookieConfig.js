@@ -22,7 +22,7 @@ function cookieConfig(initConfig) {
 		this.socket.send(JSON.stringify({
 			type: "cookieConfig",
 			data: {
-				config: $.extend(true, saved, updates),
+				config: JSON.stringify($.extend(true, saved, updates)),
 				updates: updatesString
 			}
 		}));
@@ -57,33 +57,38 @@ function cookieConfig(initConfig) {
 
 	this.message = function(msg) {
 		log("config message", {color:"cyan"});
+
+		if (sent === null) {
+			log("hmm... no message expecting", {level:1, color: "red"});
+			return;
+		}
+
+		if (typeof(sent[msg.updates]) == "undefined") {
+			log("expecting some messages, but not this", {level:1, color: "red"});
+			return;
+		}
+
+		delete sent[msg.updates];
+
+		if (typeof(msg.error) == "string") {
+			log("error returned: "+msg.error, {level:1, color: "red"});
+			return;
+		}
+
 		if (typeof(msg.config) == "undefined") {
 			log("no config", {level:1, color: "red"});
 			return;
 		}
 
+		if (typeof(msg.cookie) == "undefined") {
+			log("no cookie provided", {level:1, color: "red"});
+		}
+		setCookie(msg.cookie);
 		saved = msg.config;
-
-		if (typeof(msg.cookie) != "undefined") {
-			setCookie(cookie);
-		} else {
-			log("no cookie provided", {level:1});
-		}
-
-		if (sent === null) {
-			log("hmm... no message expecting", {level:1});
-			return;
-		}
-
-		if (typeof(sent[msg.updates]) == "undefined") {
-			log("expecting some messages, but not this", {level:1});
-			return;
-		}
-
-		delete sent[msg.updates];
-	};	
+		log("config saved", {level:1});
+	};
 
 	this.data = function() {
-		return $.extend(true, {}, saved); 
+		return $.extend(true, {}, saved);
 	};
 }
