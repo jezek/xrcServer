@@ -44,7 +44,7 @@ func (app *application) newCookie() (string, *securecookie.SecureCookie, error) 
 }
 
 func (app *application) authenticate(h http.Handler) http.Handler {
-	//log.Print("authenticate")
+	log.Print("authenticate")
 	cookieName, sCookie, err := app.newCookie()
 	if err != nil {
 		log.Print(err)
@@ -54,7 +54,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//log.Print("authenticate: handle")
+		log.Print("authenticate: handle")
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
 			//TODO auth page redirect
@@ -182,6 +182,7 @@ type message struct {
 }
 
 func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("websocketHandler: start")
 	user, ok := r.Context().Value(appUser{}).(appUser)
 	if !ok {
 		txt := "No user context"
@@ -191,8 +192,8 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	websocket.Handler(func(ws *websocket.Conn) {
-		log.Printf("wsHandler: start")
-		defer log.Printf("wsHandler: stop")
+		log.Printf("websocket.Handler: start")
+		defer log.Printf("websocket.Handler: stop")
 		defer ws.Close()
 
 		wg := sync.WaitGroup{}
@@ -208,11 +209,11 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 				select {
 				case msg, ok := <-send:
 					if !ok {
-						log.Printf("wsHandler: send: closed")
+						log.Printf("websocket.Handler: send: closed")
 						return
 					}
 					if _, err := ws.Write(msg); err != nil {
-						log.Printf("wsHandler: send: error %v", err)
+						log.Printf("websocket.Handler: send: error %v", err)
 					}
 				}
 			}
@@ -221,83 +222,83 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 		var msg []byte
 		for {
 			if err := websocket.Message.Receive(ws, &msg); err != nil {
-				log.Printf("wsHandler: recieve error: %s", err)
+				log.Printf("websocket.Handler: recieve error: %s", err)
 				break
 			}
-			//log.Printf("wsHandler: recieved message: %s", msg)
+			//log.Printf("websocket.Handler: recieved message: %s", msg)
 			m := message{}
 			if err := json.Unmarshal(msg, &m); err != nil {
-				log.Printf("wsHandler: unmarshal error: %s", err)
+				log.Printf("websocket.Handler: unmarshal error: %s", err)
 				break
 			}
-			//log.Printf("wsHandler: m: %#v", m)
+			//log.Printf("websocket.Handler: m: %#v", m)
 			switch m.Type {
 			case "moverelative":
 				x, y := int(2*m.Data["x"].(float64)), int(2*m.Data["y"].(float64))
-				log.Printf("wsHandler: move relative x: %d, y:  %d", x, y)
+				log.Printf("websocket.Handler: move relative x: %d, y:  %d", x, y)
 				app.display.DefaultScreen().Window().Pointer().Control().MoveRelative(x, y)
 			case "down":
 				b := m.Data["button"].(string)
-				log.Printf("wsHandler: down: %s", b)
+				log.Printf("websocket.Handler: down: %s", b)
 				switch b {
 				case "left":
 					app.display.DefaultScreen().Window().Pointer().Control().DownLeft()
 				case "right":
 					app.display.DefaultScreen().Window().Pointer().Control().DownRight()
 				default:
-					log.Printf("wsHandler: down: %s unknown", b)
+					log.Printf("websocket.Handler: down: %s unknown", b)
 				}
 			case "up":
 				b := m.Data["button"].(string)
-				log.Printf("wsHandler: up: %s", b)
+				log.Printf("websocket.Handler: up: %s", b)
 				switch b {
 				case "left":
 					app.display.DefaultScreen().Window().Pointer().Control().UpLeft()
 				case "right":
 					app.display.DefaultScreen().Window().Pointer().Control().UpRight()
 				default:
-					log.Printf("wsHandler: up: %s unknown", b)
+					log.Printf("websocket.Handler: up: %s unknown", b)
 				}
 			case "click":
 				b := m.Data["button"].(string)
-				log.Printf("wsHandler: click: %s", b)
+				log.Printf("websocket.Handler: click: %s", b)
 				switch b {
 				case "left":
 					app.display.DefaultScreen().Window().Pointer().Control().ClickLeft()
 				case "right":
 					app.display.DefaultScreen().Window().Pointer().Control().ClickRight()
 				default:
-					log.Printf("wsHandler: click: %s unknown", b)
+					log.Printf("websocket.Handler: click: %s unknown", b)
 				}
 			case "scroll":
 				dir := m.Data["dir"].(string)
-				log.Printf("wsHandler: scroll: %s", dir)
+				log.Printf("websocket.Handler: scroll: %s", dir)
 				switch dir {
 				case "down":
 					app.display.DefaultScreen().Window().Pointer().Control().ScrollDown()
 				case "up":
 					app.display.DefaultScreen().Window().Pointer().Control().ScrollUp()
 				default:
-					log.Printf("wsHandler: scroll: %s unknown", dir)
+					log.Printf("websocket.Handler: scroll: %s unknown", dir)
 				}
 			case "keyinput", "key":
-				log.Printf("wsHandler: %s: %v", m.Type, m.Data)
+				log.Printf("websocket.Handler: %s: %v", m.Type, m.Data)
 				text, ok := m.Data["text"].(string)
-				log.Printf("wsHandler: key: text codes %v", []byte(text))
+				log.Printf("websocket.Handler: key: text codes %v", []byte(text))
 				if !ok {
-					log.Printf("wsHandler: key: no text, or not string: %v", m.Data["text"])
+					log.Printf("websocket.Handler: key: no text, or not string: %v", m.Data["text"])
 					break
 				}
 				if err := app.display.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
-					log.Printf("wsHandler: key: x keyboard write error: %v", err)
+					log.Printf("websocket.Handler: key: x keyboard write error: %v", err)
 					//TODO send error back
 					break
 				}
 				send <- []byte(msg)
 			case "cookieConfig":
-				log.Printf("wsHandler: cookieConfig: %s", m.Data["updates"])
+				log.Printf("websocket.Handler: cookieConfig: %s", m.Data["updates"])
 				sendError := func(ch chan<- []byte, errStr string) {
-					//log.Printf("wsHandler: cookieConfig: sendError: %s", errStr)
+					//log.Printf("websocket.Handler: cookieConfig: sendError: %s", errStr)
 					msg := message{m.Type, make(map[string]interface{})}
 					if u, ok := m.Data["updates"]; ok {
 						msg.Data["updates"] = u
@@ -305,11 +306,11 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					msg.Data["error"] = errStr
 					msgBytes, err := json.Marshal(msg)
 					if err != nil {
-						log.Printf("wsHandler: cookieConfig: sendError: message marshal error: %s", err)
+						log.Printf("websocket.Handler: cookieConfig: sendError: message marshal error: %s", err)
 						return
 					}
 					send <- msgBytes
-					log.Printf("wsHandler: cookieConfig: sendError: sent: %#v", msg)
+					log.Printf("websocket.Handler: cookieConfig: sendError: sent: %#v", msg)
 				}
 
 				cfgStr, ok := m.Data["config"].(string)
@@ -352,17 +353,17 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					msg.Data["updates"] = u
 				}
 
-				//log.Printf("wsHandler: cookieConfig: returning: %#v", msg)
+				//log.Printf("websocket.Handler: cookieConfig: returning: %#v", msg)
 				msgBytes, err := json.Marshal(msg)
 				if err != nil {
-					log.Printf("wsHandler: cookieConfig: message marshal error: %s", err)
+					log.Printf("websocket.Handler: cookieConfig: message marshal error: %s", err)
 					break
 				}
 				send <- msgBytes
-				log.Printf("wsHandler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
+				log.Printf("websocket.Handler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
 
 			default:
-				log.Printf("wsHandler: unknown type: %s", m.Type)
+				log.Printf("websocket.Handler: unknown type: %s", m.Type)
 			}
 		}
 	}).ServeHTTP(w, r)

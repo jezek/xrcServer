@@ -43,6 +43,7 @@ $(function() {
 		var left = $("#button_left");
 		var right = $("#button_right");
 
+		log("WebSocket connecting ...");
 		var socket = new window.WebSocket("wss://"+window.location.host+"/ws");
 		socket.onopen = function(evt) {
 			log("WebSocket connected");
