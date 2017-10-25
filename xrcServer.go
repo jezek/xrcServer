@@ -32,6 +32,7 @@ import (
 type application struct {
 	display              *xgo.Display
 	port, assets, config string
+	noTLS                bool
 	homeTemplate         *template.Template
 	certs                []tls.Certificate
 
@@ -62,6 +63,7 @@ func main() {
 	flag.StringVar(&app.port, "p", "10905", "http service port")
 	flag.StringVar(&app.assets, "d", "assets", "working dir")
 	flag.StringVar(&app.config, "c", "~/.config/xrcServer", "configuration dir")
+	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
 	flag.Parse()
 	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
 
@@ -88,6 +90,7 @@ func main() {
 	}
 	log.Printf("xrcServer listens on port :%s", app.port)
 
+	// load or generate certificates
 	certFile := filepath.Join(app.config, "cert.pem")
 	keyFile := filepath.Join(app.config, "key.pem")
 
@@ -110,19 +113,25 @@ func main() {
 				mux.Handle("/favicon.ico", http.FileServer(http.Dir(app.assets)))
 				mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(filepath.Join(app.assets, "js")))))
 				mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir(filepath.Join(app.assets, "css")))))
-				//mux.Handle("/ws", app.authenticate(websocket.Handler(app.websocketHandler)))
 				mux.Handle("/ws", app.authenticate(http.HandlerFunc(app.websocketHandler)))
 
 				s := &http.Server{
 					Addr:    ":" + app.port,
-					Handler: https.EnforceTLS(mux),
-					TLSConfig: &tls.Config{
-						Certificates: app.certs,
-					},
+					Handler: mux,
 				}
 
-				log.Printf("starting http server with TLS")
-				return s.ServeTLS(nl, "", "")
+				if app.noTLS == false {
+					// use tls
+					s.Handler = https.EnforceTLS(s.Handler)
+					s.TLSConfig = &tls.Config{
+						Certificates: app.certs,
+					}
+					log.Printf("starting http server with TLS")
+					return s.ServeTLS(nl, "", "")
+				}
+				log.Printf("starting http server !!! without TLS !!!")
+				return s.Serve(nl)
+
 			},
 			func() error {
 				return nl.Close()
