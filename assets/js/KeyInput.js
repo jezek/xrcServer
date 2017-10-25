@@ -3,7 +3,7 @@
 var keyinputs = {
 	socket: null,
 	keyinput: {},
-	focused: null
+	focusing: null
 };
 
 keyinputs.init = function(socket) {
@@ -44,32 +44,21 @@ keyinputs.message = function(msg) {
 	this.keyinput[msg.sender].message(msg);
 };
 
-keyinputs.focus = function(name, opt) {
-	log("keyinputs focus: "+name, {color:"orange"});
-	log("opt: "+JSON.stringify(opt), {level:1});
-	if (typeof(this.keyinput[name]) == "undefined") {
-		log("unknown name", {level:1});
+keyinputs.focus = function() {
+	log("keyinputs.focus", {color: "pink"});
+	if (this.focusing == null) {
+		log("no focusing", {level:1, color: "pink"});
 		return;
 	}
-	if (this.focused == name) {
-		log("allreay focused", {level:1});
+	if (typeof(this.keyinput[this.focusing]) != "undefined") {
+		log("bad focusing", {level:1, color: "pink"});
+		this.focusing=null;
 		return;
 	}
-	if (this.focused != null) {
-		this.keyinput[this.focused].unfocus();
-	}
-	this.focused = name;
-	this.keyinput[name].focus(opt);
-};
 
-keyinputs.unfocus = function() {
-	log("keyinputs unfocus", {color:"brown"});
-	if (this.focused == null) {
-		log("allready unfocused", {level:1});
-		return;
-	}
-	this.keyinput[this.focused].unfocus();
-	this.focused = null;
+	log("focusing: "+this.focusing, {level:1, color: "pink"});
+	$(this.keyinput[this.focusing].elm).focus();
+	log("focused: "+this.focusing, {level:1, color: "pink"});
 };
 
 function keyinput(socket, elm, name, opt) {
@@ -231,46 +220,18 @@ function keyinput(socket, elm, name, opt) {
 
 	this.placeholder = null;
 
-	this.focus = function(opt) {
-		log("keyinput focus: "+this.name, {color:"orange"});
-		log("opt: "+JSON.stringify(opt), {level:1});
-		if (typeof(opt) != "undefined" && typeof(opt.clear) == "boolean") {
-			this.lastValue = "";
-		}
-		$(this.elm)
-			.off("focusout.keyinput")
-			.on("focusout.keyinput", function(e) {
-				//TODO use other approach, this breaks things if url bar in browser is clicked
-				log("keyinput on focusout: "+this.name, {color:"yellow"});
-				if ($(this.elm).is(":visible") == false) {
-					log("element is hidden", {level:1});
-					keyinputs.unfocus();
-					return;
-				}
-				keyinputs.unfocus();
-				if (this.options.autorefocus == true) {
-					log("autorefocus", {level:1});
-					$(this.elm).focus();
-					return;
-				}
-			}.bind(this));
-		if (typeof(opt) == "undefined" || typeof(opt.onfocus) == "undefined") {
-			$(this.elm).focus();
-		}
-	};
-
-	this.unfocus = function() {
-		log("keyinput unfocus: "+this.name, {color:"brown"});
-		$(this.elm).off("focusout.keyinput");
-		$(this.elm).finish().attr("placeholder",this.placeholder);
-		this.placeholder = null;
-	};
-
 	$(this.elm).on("focus.keyinput", function(e) {
 		log("keyinput on focus: "+this.name, {color:"yellow"});
 		this.placeholder = $(this.elm).attr("placeholder");
 		$(this.elm).attr("placeholder","");
-		keyinputs.focus(this.name, {onfocus: true});
+		keyinputs.focusing = this.name;
+	}.bind(this));
+
+	$(this.elm).on("focusout.keyinput", function(e) {
+		log("keyinput on focusout: "+this.name, {color:"brown"});
+		$(this.elm).finish().attr("placeholder",this.placeholder);
+		this.placeholder = null;
+		keyinputs.focusing = null;
 	}.bind(this));
 
 }
