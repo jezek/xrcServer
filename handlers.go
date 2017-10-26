@@ -88,53 +88,60 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//TODO start new passphrase timeout, is allready running, reset timer
-	passphrase := r.URL.Path
 
-	//TODO confront passphrase timer with phrase
-	if passphrase != "" {
+	if app.authPassLen > 0 {
+		//TODO start new passphrase timeout, is allready running, reset timer
+		passphrase := r.URL.Path
+
+		//TODO confront passphrase timer with phrase
+		if passphrase == "" {
+			password, err := app.authNewPassword()
+			if err != nil {
+				log.Print(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println(strings.Repeat("*", 30))
+			//TODO split passphrase to improve readability
+			fmt.Println("Passphrase:", hex.EncodeToString(password))
+			fmt.Println(strings.Repeat("*", 30))
+
+			w.Write([]byte("TODO pair form"))
+			return
+		}
+
 		password, err := hex.DecodeString(passphrase)
 		if err != nil {
 			log.Printf("pairHandler: decoding passphrase error: %s", err)
 			app.authClearPassword()
 		}
-		if err == nil && app.auth(password) {
-			user := appUser{
-				Agent: r.UserAgent(),
-			}
-			encoded, err := sCookie.Encode(cookieName, user)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			cookie := &http.Cookie{
-				Name:  cookieName,
-				Value: encoded,
-				Path:  "/",
-			}
-			http.SetCookie(w, cookie)
-			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-			log.Print("pairHandler: paired")
+
+		if err != nil || !app.auth(password) {
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
+			log.Print("pairHandler: wrong passphrase")
+			//TODO user misses passphrase for more times, block
 			return
 		}
-		http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
-		log.Print("pairHandler: wrong passphrase")
-		//TODO user misses passphrase for more times, block
-		return
 	}
 
-	password, err := app.authNewPassword()
+	user := appUser{
+		Agent: r.UserAgent(),
+	}
+	encoded, err := sCookie.Encode(cookieName, user)
 	if err != nil {
-		log.Print(err)
+		log.Printf("pairHandler: cookie encoding error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(strings.Repeat("*", 30))
-	//TODO split passphrase to improve readability
-	fmt.Println("Passphrase:", hex.EncodeToString(password))
-	fmt.Println(strings.Repeat("*", 30))
 
-	w.Write([]byte("TODO pair form"))
+	cookie := &http.Cookie{
+		Name:  cookieName,
+		Value: encoded,
+		Path:  "/",
+	}
+	http.SetCookie(w, cookie)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	log.Print("pairHandler: paired")
 }
 
 func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {

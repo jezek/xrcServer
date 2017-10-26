@@ -37,6 +37,7 @@ type application struct {
 	certs                []tls.Certificate
 
 	authMx       *sync.Mutex
+	authPassLen  int
 	authPassword []byte
 	authExpire   time.Time
 }
@@ -60,10 +61,11 @@ func main() {
 	}
 
 	// Flags
-	flag.StringVar(&app.port, "p", "10905", "http service port")
-	flag.StringVar(&app.assets, "d", "assets", "working dir")
-	flag.StringVar(&app.config, "c", "~/.config/xrcServer", "configuration dir")
+	flag.StringVar(&app.port, "port", "10905", "http(s) service `port number`")
+	flag.StringVar(&app.assets, "assets", "./assets", "`path` to assets directory for http serving")
+	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
+	flag.IntVar(&app.authPassLen, "password", 8, "`length` of generated authentication password bytes. the password is printed in hexa, so you need to write 2 times more characters for authentication. 0 means no password.")
 	flag.Parse()
 	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
 
@@ -290,6 +292,10 @@ func (app *application) authNewPassword() ([]byte, error) {
 	app.authMx.Lock()
 	defer app.authMx.Unlock()
 
+	if app.authPassLen <= 0 {
+		return []byte{}, nil
+	}
+
 	// expired
 	if app.authPassword != nil && app.authExpire.Before(time.Now()) {
 		app.authPassword = nil
@@ -297,7 +303,7 @@ func (app *application) authNewPassword() ([]byte, error) {
 	}
 
 	if app.authPassword == nil {
-		app.authPassword = make([]byte, 8)
+		app.authPassword = make([]byte, app.authPassLen)
 		_, err := rand.Read(app.authPassword)
 		if err != nil {
 			return nil, err
@@ -312,22 +318,30 @@ func (app *application) authNewPassword() ([]byte, error) {
 func (app *application) authClearPassword() {
 	app.authMx.Lock()
 	defer app.authMx.Unlock()
+
 	app.authPassword = nil
 	log.Print("authClearPassword: cleared")
 }
 
 func (app *application) auth(b []byte) bool {
 	defer app.authClearPassword()
+
 	app.authMx.Lock()
 	defer app.authMx.Unlock()
+
+	if app.authPassLen <= 0 {
+		return true
+	}
 
 	if app.authPassword == nil {
 		return false
 	}
+
 	if app.authExpire.Before(time.Now()) {
 		// expired
 		log.Print("auth: expired")
 		return false
 	}
+
 	return bytes.Equal(app.authPassword, b)
 }
