@@ -22,6 +22,7 @@ function Tabs(elms) {
 		$(elm).addClass("selected");
 		var body = this.tabs.get(elm);
 		body.show();
+		log("tabs: triggering select");
 		$(elm).trigger("select");
 		if (typeof(userConfig) == "object" && typeof(userConfig.update) == "function") {
 			log("tabs: updating active tab in userConfig");
@@ -69,7 +70,9 @@ function Tabs(elms) {
 			log($(this).data("for")+" header on: click end");
 		});
 	}.bind(this));
+
 	if (showFirst !== null)  {
+		log("tabs: showfirst: "+showFirst);
 		this.select(showFirst);
 	}
 }

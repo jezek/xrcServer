@@ -21,6 +21,7 @@ import (
 type appUser struct {
 	Agent     string `json:"-"`
 	ActiveTab string `json:"activeTab"`
+	KFocus    string `json:"keyinputsFocusing"`
 }
 
 func (app *application) newCookie() (string, *securecookie.SecureCookie, error) {

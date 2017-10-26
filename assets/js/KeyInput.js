@@ -3,8 +3,26 @@
 var keyinputs = {
 	socket: null,
 	keyinput: {},
-	focusing: null
+	focusingValue: null
 };
+
+Object.defineProperty(keyinputs, 'focusing', {
+	get: function() {
+		return this.focusingValue;
+	},
+	set: function(value) {
+		if (this.focusingValue === value) {
+			return;
+		}
+		if (typeof(userConfig) == "object" && typeof(userConfig.update) == "function") {
+			userConfig.update({
+				keyinputsFocusing: value || ""
+			});
+			log("keyinputs.focusing: updating in userConfig: value");
+		}
+		this.focusingValue = value;
+	}
+});
 
 keyinputs.init = function(socket) {
 	log("init keyinputs");
@@ -13,6 +31,18 @@ keyinputs.init = function(socket) {
 	$("input.keyinput").each(function() {
 		keyinputs.add(this);
 	});
+
+	if (typeof(userConfig) == "object" && typeof(userConfig.data) == "function") {
+		var data = userConfig.data();
+
+		if (typeof(data.keyinputsFocusing) == "undefined" || data.keyinputsFocusing=="") {
+			data.keyinputsFocusing=null;
+		}
+
+		log("keyinputs.init: got focusing from userConfig");
+		this.focusingValue=data.keyinputsFocusing;
+		this.focus();
+	}
 };
 
 keyinputs.add = function(elm) {
@@ -44,13 +74,17 @@ keyinputs.message = function(msg) {
 	this.keyinput[msg.sender].message(msg);
 };
 
+
 keyinputs.focus = function() {
 	log("keyinputs.focus", {color: "pink"});
+	
+
 	if (this.focusing == null) {
 		log("no focusing", {level:1, color: "pink"});
 		return;
 	}
-	if (typeof(this.keyinput[this.focusing]) != "undefined") {
+
+	if (typeof(this.keyinput[this.focusing]) == "undefined") {
 		log("bad focusing", {level:1, color: "pink"});
 		this.focusing=null;
 		return;
@@ -224,14 +258,27 @@ function keyinput(socket, elm, name, opt) {
 		log("keyinput on focus: "+this.name, {color:"yellow"});
 		this.placeholder = $(this.elm).attr("placeholder");
 		$(this.elm).attr("placeholder","");
-		keyinputs.focusing = this.name;
 	}.bind(this));
 
 	$(this.elm).on("focusout.keyinput", function(e) {
 		log("keyinput on focusout: "+this.name, {color:"brown"});
 		$(this.elm).finish().attr("placeholder",this.placeholder);
 		this.placeholder = null;
-		keyinputs.focusing = null;
+	}.bind(this));
+
+	$(this.elm).on("click", function(e) {
+		e.preventDefault();
+		log("keyinput on click: "+this.name);
+		if (keyinputs.focusing == this.name) {
+			log("unfocus", {level:1});
+			keyinputs.focusing = null;
+			$(this.elm).blur();
+			return;
+		}
+
+		log("focus", {level:1});
+		keyinputs.focusing = this.name;
+
 	}.bind(this));
 
 }

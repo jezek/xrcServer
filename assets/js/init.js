@@ -23,8 +23,13 @@ $(function() {
 	var tabs = new Tabs("#header .tab");
 
 	$(tabs.pages.keypage.header).on("select", function(e) {
-		keyinputs.focus("keypage", {clear: true});
+		log("tabs.pages.keypage.header selected");
+		keyinputs.focus();
 	});
+
+	//TODO focusing after page (re)load not working 
+	$(tabs.selected).trigger("select");
+
 
 	$("#logpage .clear").on("click", function(e) {
 		e.preventDefault();
