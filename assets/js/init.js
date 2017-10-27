@@ -27,8 +27,9 @@ $(function() {
 		keyinputs.focus();
 	});
 
-	//TODO focusing after page (re)load not working 
-	$(tabs.selected).trigger("select");
+	//if (tabs.selected) {
+	//	$(tabs.selected).trigger("select");
+	//}
 
 
 	$("#logpage .clear").on("click", function(e) {

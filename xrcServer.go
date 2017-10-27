@@ -36,10 +36,11 @@ type application struct {
 	homeTemplate         *template.Template
 	certs                []tls.Certificate
 
-	authMx       *sync.Mutex
-	authPassLen  int
-	authPassword []byte
-	authExpire   time.Time
+	authMx              *sync.Mutex
+	authPassLen         int
+	authPassword        []byte
+	authPassExpire      time.Time
+	authCookeieDuration time.Duration
 }
 
 func main() {
@@ -57,7 +58,8 @@ func main() {
 	defer log.Printf("bye")
 
 	app := application{
-		authMx: &sync.Mutex{},
+		authMx:              &sync.Mutex{},
+		authCookeieDuration: 365 * 24 * time.Hour,
 	}
 
 	// Flags
@@ -297,7 +299,7 @@ func (app *application) authNewPassword() ([]byte, error) {
 	}
 
 	// expired
-	if app.authPassword != nil && app.authExpire.Before(time.Now()) {
+	if app.authPassword != nil && app.authPassExpire.Before(time.Now()) {
 		app.authPassword = nil
 		log.Print("authNewPassword: expired")
 	}
@@ -311,7 +313,7 @@ func (app *application) authNewPassword() ([]byte, error) {
 		log.Print("authNewPassword: new created")
 	}
 
-	app.authExpire = time.Now().Add(time.Minute)
+	app.authPassExpire = time.Now().Add(time.Minute)
 	return app.authPassword, nil
 }
 
@@ -337,7 +339,7 @@ func (app *application) auth(b []byte) bool {
 		return false
 	}
 
-	if app.authExpire.Before(time.Now()) {
+	if app.authPassExpire.Before(time.Now()) {
 		// expired
 		log.Print("auth: expired")
 		return false

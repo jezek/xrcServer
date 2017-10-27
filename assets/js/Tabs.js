@@ -25,43 +25,50 @@ function Tabs(elms) {
 		log("tabs: triggering select");
 		$(elm).trigger("select");
 		if (typeof(userConfig) == "object" && typeof(userConfig.update) == "function") {
-			log("tabs: updating active tab in userConfig");
+			log("tabs: updating active tab in userConfig: "+$(elm).data("for"));
 			userConfig.update({
 				activeTab: $(elm).data("for")
 			});
 		}
 	};
 
-	var showFirst = null;
 	var selFor = "";
 	if (typeof(userConfig) == "object" && typeof(userConfig.data) == "function") {
 		var data = userConfig.data();
 		if (typeof(data.activeTab) == "string") {
 			selFor = data.activeTab;
-			log("tabs: got active tab from userConfig");
+			log("tabs: got active tab from userConfig: "+selFor);
 		}
 	}
+	var found=false;
+	var first=null;
 	$(elms).each(function(i, elm) {
 		forelm = $(elm).data("for");
 		body = $("#"+forelm);
 		if (!body) {
 			return;
 		}
-		$(elm).removeClass("selected");
-		body.hide();
+		if (i==0) {
+			first = {
+				elm: elm,
+				body: body
+			};
+		}
+		if (found===false && (forelm === selFor || (selFor=="" && i==0))) {
+			$(elm).addClass("selected");
+			this.selected=elm;
+			found=true;
+		  body.show();
+		} else {
+		  body.hide();
+			$(elm).removeClass("selected");
+		}
 
 		this.pages[forelm] = {
 			header: elm,
 			body: body
 		};
 		this.tabs.set(elm, body);
-
-		if (this.tabs.size==1) {
-			showFirst = elm;
-		}
-		if (selFor != "" && forelm === selFor) {
-			showFirst = elm;
-		}
 
 		$(elm).on("click", {tabs:this}, function(e) {
 			e.preventDefault();
@@ -71,8 +78,10 @@ function Tabs(elms) {
 		});
 	}.bind(this));
 
-	if (showFirst !== null)  {
-		log("tabs: showfirst: "+showFirst);
-		this.select(showFirst);
+	if (!found && first) {
+		$(first.elm).addClass("selected");
+		this.selected=first.elm;
+		first.body.show();
 	}
+
 }

@@ -18,7 +18,7 @@ Object.defineProperty(keyinputs, 'focusing', {
 			userConfig.update({
 				keyinputsFocusing: value || ""
 			});
-			log("keyinputs.focusing: updating in userConfig: value");
+			log("keyinputs.focusing: updating in userConfig: value: "+value);
 		}
 		this.focusingValue = value;
 	}
@@ -39,9 +39,8 @@ keyinputs.init = function(socket) {
 			data.keyinputsFocusing=null;
 		}
 
-		log("keyinputs.init: got focusing from userConfig");
+		log("keyinputs.init: got focusing from userConfig: "+data.keyinputsFocusing);
 		this.focusingValue=data.keyinputsFocusing;
-		this.focus();
 	}
 };
 

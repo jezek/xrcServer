@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
@@ -39,8 +40,7 @@ func (app *application) newCookie() (string, *securecookie.SecureCookie, error) 
 	}
 	//TODO user password via securecookie block encryption
 	sCookie := securecookie.New(priv, nil)
-	//TODO what if i want different max age?
-	sCookie.MaxAge(3600 * 24 * 365)
+	sCookie.MaxAge(int(app.authCookeieDuration.Seconds()))
 	return cookieName, sCookie, nil
 }
 
@@ -136,9 +136,10 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := &http.Cookie{
-		Name:  cookieName,
-		Value: encoded,
-		Path:  "/",
+		Name:    cookieName,
+		Value:   encoded,
+		Expires: time.Now().Add(app.authCookeieDuration),
+		Path:    "/",
 	}
 	http.SetCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -351,10 +352,11 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					Data: map[string]interface{}{
 						"config": userConfig,
 						"cookie": map[string]interface{}{
-							"name":  cookieName,
-							"value": encoded,
+							"name":    cookieName,
+							"value":   encoded,
+							"expires": time.Now().Add(app.authCookeieDuration).Format("Mon, 2 Jan 2006 15:04:05 MST"),
+							"path":    "/",
 						},
-						"test": "test",
 					},
 				}
 				if u, ok := m.Data["updates"]; ok {

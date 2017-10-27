@@ -45,14 +45,23 @@ function cookieConfig(initConfig) {
 			return;
 		}
 		if (cookie.name.indexOf("=") != -1) {
-			log("cookie.name contains '\"' character", {level:1, color: "red"});
+			log("cookie.name contains '=' character", {level:1, color: "red"});
 			return;
 		}
 		if (typeof(cookie.value) != "string") {
 			log("cookie.value is not string", {level:1, color: "red"});
 			return;
 		}
-		document.cookie = cookie.name+"="+cookie.value;
+		if (typeof(cookie.expires) != "string") {
+			log("cookie.expires is not string", {level:1, color: "red"});
+			return;
+		}
+		if (typeof(cookie.path) != "string") {
+			log("cookie.path is not string", {level:1, color: "red"});
+			return;
+		}
+		log("setCookie: "+JSON.stringify(cookie), {color: "green"});
+		document.cookie = cookie.name+"="+cookie.value+"; expires="+cookie.expires+"; path="+cookie.path;
 	};
 
 	this.message = function(msg) {
