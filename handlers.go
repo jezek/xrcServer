@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -25,8 +26,7 @@ type appUser struct {
 	KFocus    string `json:"keyinputsFocusing"`
 }
 
-func (app *application) newCookie() (string, *securecookie.SecureCookie, error) {
-	//TODO cache
+func (app *application) newAuthSecureCookie() (string, *securecookie.SecureCookie, error) {
 	pub, err := app.publicKey()
 	if err != nil {
 		return "", nil, err
@@ -44,9 +44,27 @@ func (app *application) newCookie() (string, *securecookie.SecureCookie, error) 
 	return cookieName, sCookie, nil
 }
 
+func (app *application) newPairSecureCookie() (string, *securecookie.SecureCookie, error) {
+	pub, err := app.publicKey()
+	if err != nil {
+		return "", nil, err
+	}
+	cookieHash := sha1.Sum(pub)
+	cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
+
+	priv, err := app.privateKey()
+	if err != nil {
+		return cookieName, nil, err
+	}
+	privHash := sha256.Sum256(priv)
+	sCookie := securecookie.New(priv, privHash[:])
+	sCookie.MaxAge(int(app.authPassDuration.Seconds()))
+	return cookieName, sCookie, nil
+}
+
 func (app *application) authenticate(h http.Handler) http.Handler {
 	log.Print("authenticate")
-	cookieName, sCookie, err := app.newCookie()
+	cookieName, sCookie, err := app.newAuthSecureCookie()
 	if err != nil {
 		log.Print(err)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,35 +101,85 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 }
 
 func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
-	cookieName, sCookie, err := app.newCookie()
-	if err != nil {
-		log.Print(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	if app.authPassLen > 0 {
 		//TODO start new passphrase timeout, is allready running, reset timer
-		passphrase := r.URL.Path
+		passphraseUrl := r.URL.Path
+
+		cookieName, pairCookie, err := app.newPairSecureCookie()
+		if err != nil {
+			log.Print(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		//TODO confront passphrase timer with phrase
-		if passphrase == "" {
-			password, err := app.authNewPassword()
-			if err != nil {
+		if passphraseUrl == "" {
+			if err := app.authNewPassword(); err != nil {
 				log.Print(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			passphrase := hex.EncodeToString(app.authPassBytes)
+			passphraseServer := passphrase[:len(passphrase)/2]
+			passphraseClient := passphrase[len(passphrase)/2:]
 			fmt.Println(strings.Repeat("*", 30))
 			//TODO split passphrase to improve readability
-			fmt.Println("Passphrase:", hex.EncodeToString(password))
+			fmt.Println("Passphrase:", passphraseServer)
 			fmt.Println(strings.Repeat("*", 30))
 
-			w.Write([]byte("TODO pair form"))
+			//TODO duplicate code
+			encoded, err := pairCookie.Encode(cookieName, passphraseClient)
+			if err != nil {
+				log.Printf("pairHandler: pair cookie encoding error: %s", err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			cookie := &http.Cookie{
+				Name:    cookieName,
+				Value:   encoded,
+				Expires: time.Now().Add(app.authPassDuration),
+				Path:    "/pair",
+			}
+			http.SetCookie(w, cookie)
+
+			if err := app.pairTemplate.Execute(w, struct{}{}); err != nil {
+				log.Print(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			log.Printf("pair page served: %s", r.RemoteAddr)
 			return
 		}
 
-		password, err := hex.DecodeString(passphrase)
+		cookie, err := r.Cookie(cookieName)
+		if err != nil {
+			//TODO better logic!
+			errStr := "pairHandler: don't have pair cookie: " + err.Error()
+			log.Print(errStr)
+			http.Error(w, errStr, http.StatusUnauthorized)
+			//TODO redirect
+			return
+		}
+		passphraseCookie := ""
+		if err := pairCookie.Decode(cookieName, cookie.Value, &passphraseCookie); err != nil {
+			//delete cookie
+			cookie := &http.Cookie{
+				Name:    cookieName,
+				Value:   "",
+				Expires: time.Unix(0, 0),
+				Path:    "/pair",
+			}
+			http.SetCookie(w, cookie)
+
+			errStr := "pairHandler: error encoding pair cookie: " + err.Error()
+			log.Print(errStr)
+			http.Error(w, errStr, http.StatusUnauthorized)
+			//TODO redirect
+			return
+		}
+
+		password, err := hex.DecodeString(passphraseUrl + passphraseCookie)
 		if err != nil {
 			log.Printf("pairHandler: decoding passphrase error: %s", err)
 			app.authClearPassword()
@@ -125,12 +193,19 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	cookieName, authCookie, err := app.newAuthSecureCookie()
+	if err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	user := appUser{
 		Agent: r.UserAgent(),
 	}
-	encoded, err := sCookie.Encode(cookieName, user)
+	encoded, err := authCookie.Encode(cookieName, user)
 	if err != nil {
-		log.Printf("pairHandler: cookie encoding error: %s", err.Error())
+		log.Printf("pairHandler: auth cookie encoding error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -182,7 +257,7 @@ func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Authourized user served: %s", r.Host)
+	log.Printf("home page served to athorized user: %s", r.RemoteAddr)
 }
 
 type message struct {
@@ -332,7 +407,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					break
 				}
 
-				cookieName, sCookie, err := app.newCookie()
+				cookieName, sCookie, err := app.newAuthSecureCookie()
 				if err != nil {
 					sendError(send, err.Error())
 					break

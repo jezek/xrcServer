@@ -30,16 +30,20 @@ import (
 )
 
 type application struct {
-	display              *xgo.Display
+	display      *xgo.Display
+	homeTemplate *template.Template
+	pairTemplate *template.Template
+	certs        []tls.Certificate
+
+	// config
 	port, assets, config string
 	noTLS                bool
-	homeTemplate         *template.Template
-	certs                []tls.Certificate
 
 	authMx              *sync.Mutex
 	authPassLen         int
-	authPassword        []byte
+	authPassBytes       []byte
 	authPassExpire      time.Time
+	authPassDuration    time.Duration
 	authCookeieDuration time.Duration
 }
 
@@ -59,6 +63,7 @@ func main() {
 
 	app := application{
 		authMx:              &sync.Mutex{},
+		authPassDuration:    2 * time.Minute,
 		authCookeieDuration: 365 * 24 * time.Hour,
 	}
 
@@ -67,9 +72,10 @@ func main() {
 	flag.StringVar(&app.assets, "assets", "./assets", "`path` to assets directory for http serving")
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
-	flag.IntVar(&app.authPassLen, "password", 8, "`length` of generated authentication password bytes. the password is printed in hexa, so you need to write 2 times more characters for authentication. 0 means no password.")
+	flag.IntVar(&app.authPassLen, "password", 4, "`length` of generated authentication password string. 0 means no password.")
 	flag.Parse()
 	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
+	app.pairTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "pair.tmpl")))
 
 	if strings.HasPrefix(app.config, "~") {
 		user, err := user.Current()
@@ -290,38 +296,40 @@ func (app *application) publicKey() ([]byte, error) {
 	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
 }
 
-func (app *application) authNewPassword() ([]byte, error) {
+func (app *application) authNewPassword() error {
 	app.authMx.Lock()
 	defer app.authMx.Unlock()
 
 	if app.authPassLen <= 0 {
-		return []byte{}, nil
+		app.authPassBytes = []byte{}
+		return nil
 	}
 
 	// expired
-	if app.authPassword != nil && app.authPassExpire.Before(time.Now()) {
-		app.authPassword = nil
+	if app.authPassBytes != nil && app.authPassExpire.Before(time.Now()) {
+		app.authPassBytes = nil
 		log.Print("authNewPassword: expired")
 	}
 
-	if app.authPassword == nil {
-		app.authPassword = make([]byte, app.authPassLen)
-		_, err := rand.Read(app.authPassword)
+	if app.authPassBytes == nil {
+		app.authPassBytes = make([]byte, app.authPassLen)
+		_, err := rand.Read(app.authPassBytes)
 		if err != nil {
-			return nil, err
+			app.authPassBytes = nil
+			return err
 		}
 		log.Print("authNewPassword: new created")
 	}
 
-	app.authPassExpire = time.Now().Add(time.Minute)
-	return app.authPassword, nil
+	app.authPassExpire = time.Now().Add(app.authPassDuration)
+	return nil
 }
 
 func (app *application) authClearPassword() {
 	app.authMx.Lock()
 	defer app.authMx.Unlock()
 
-	app.authPassword = nil
+	app.authPassBytes = nil
 	log.Print("authClearPassword: cleared")
 }
 
@@ -335,7 +343,7 @@ func (app *application) auth(b []byte) bool {
 		return true
 	}
 
-	if app.authPassword == nil {
+	if app.authPassBytes == nil {
 		return false
 	}
 
@@ -345,5 +353,5 @@ func (app *application) auth(b []byte) bool {
 		return false
 	}
 
-	return bytes.Equal(app.authPassword, b)
+	return bytes.Equal(app.authPassBytes, b)
 }
