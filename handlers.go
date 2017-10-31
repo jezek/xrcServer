@@ -314,7 +314,7 @@ func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, ok := r.Context().Value(appUser{}).(appUser)
 	if !ok {
-		txt := "No user context"
+		txt := "homeHandler: no user context"
 		log.Print(txt)
 		http.Error(w, txt, http.StatusInternalServerError)
 		return
@@ -322,7 +322,7 @@ func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	userConfig, err := json.Marshal(user)
 	if err != nil {
-		log.Print(err)
+		log.Printf("homeHandler: user config to json error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -336,7 +336,7 @@ func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 	//log.Printf("homeHandler: template \"%s\"", app.homeTemplate.Name())
 	//log.Printf("homeHandler: template data: %#v", data)
 	if err := app.homeTemplate.Execute(w, data); err != nil {
-		log.Print(err)
+		log.Printf("homeHandler: homeTemplat execute error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -349,10 +349,10 @@ type message struct {
 }
 
 func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("websocketHandler: start")
+	//log.Printf("websocketHandler: start")
 	user, ok := r.Context().Value(appUser{}).(appUser)
 	if !ok {
-		txt := "No user context"
+		txt := "websocketHandler: no user context"
 		log.Print(txt)
 		http.Error(w, txt, http.StatusInternalServerError)
 		return
@@ -380,7 +380,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 						return
 					}
 					if _, err := ws.Write(msg); err != nil {
-						log.Printf("websocket.Handler: send: error %v", err)
+						log.Printf("websocket.Handler: send: error %s", err.Error())
 					}
 				}
 			}
@@ -389,13 +389,13 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 		var msg []byte
 		for {
 			if err := websocket.Message.Receive(ws, &msg); err != nil {
-				log.Printf("websocket.Handler: recieve error: %s", err)
+				log.Printf("websocket.Handler: recieve error: %s", err.Error())
 				break
 			}
 			//log.Printf("websocket.Handler: recieved message: %s", msg)
 			m := message{}
 			if err := json.Unmarshal(msg, &m); err != nil {
-				log.Printf("websocket.Handler: unmarshal error: %s", err)
+				log.Printf("websocket.Handler: message json unmarshal error: %s", err)
 				break
 			}
 			//log.Printf("websocket.Handler: m: %#v", m)
@@ -505,6 +505,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					sendError(send, err.Error())
 					break
 				}
+
 				msg := message{
 					Type: m.Type,
 					Data: map[string]interface{}{
@@ -520,15 +521,15 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 				if u, ok := m.Data["updates"]; ok {
 					msg.Data["updates"] = u
 				}
-
 				//log.Printf("websocket.Handler: cookieConfig: returning: %#v", msg)
 				msgBytes, err := json.Marshal(msg)
 				if err != nil {
 					log.Printf("websocket.Handler: cookieConfig: message marshal error: %s", err)
 					break
 				}
+
 				send <- msgBytes
-				log.Printf("websocket.Handler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
+				//log.Printf("websocket.Handler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
 
 			default:
 				log.Printf("websocket.Handler: unknown type: %s", m.Type)
