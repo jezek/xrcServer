@@ -63,7 +63,7 @@ func main() {
 
 	app := application{
 		authMx:              &sync.Mutex{},
-		authPassDuration:    2 * time.Minute,
+		authPassDuration:    5 * time.Minute,
 		authCookeieDuration: 365 * 24 * time.Hour,
 	}
 
@@ -340,16 +340,18 @@ func (app *application) auth(b []byte) bool {
 	defer app.authMx.Unlock()
 
 	if app.authPassLen <= 0 {
+		log.Print("auth: pen=0, true")
 		return true
 	}
 
 	if app.authPassBytes == nil {
+		log.Print("auth: nil, false")
 		return false
 	}
 
 	if app.authPassExpire.Before(time.Now()) {
 		// expired
-		log.Print("auth: expired")
+		log.Print("auth: expired, flase")
 		return false
 	}
 

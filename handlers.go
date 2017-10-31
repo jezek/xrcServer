@@ -77,21 +77,23 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
 			//TODO auth page redirect
-			http.Redirect(w, r, "pair", http.StatusUnauthorized)
+			log.Print("user has no auth cookie")
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
 
 		user := appUser{}
 		if err := sCookie.Decode(cookieName, cookie.Value, &user); err != nil {
-			http.Redirect(w, r, "pair", http.StatusUnauthorized)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			log.Printf("auth cookie decode error: %s", err.Error())
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
 
 		if user.Agent != r.UserAgent() {
 			//TODO user agent is veery similiar ... maybe update? (if user uses password, update agent)
-			http.Redirect(w, r, "pair", http.StatusUnauthorized)
-			http.Error(w, "UserAgent changed!", http.StatusUnauthorized)
+			log.Printf("UserAgent changed!")
+			//TODO message via flash cookie?
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -101,122 +103,202 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 }
 
 func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
-	if app.authPassLen > 0 {
-		//TODO start new passphrase timeout, is allready running, reset timer
-		passphraseUrl := r.URL.Path
+	log.Printf("pairHandler")
+	defer log.Printf("pairHandler end")
 
-		cookieName, pairCookie, err := app.newPairSecureCookie()
-		if err != nil {
-			log.Print(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	ascn, asc, err := app.newAuthSecureCookie()
+	if err != nil {
+		log.Printf("pairHandler: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	pscn, psc, err := app.newPairSecureCookie()
+	if err != nil {
+		log.Printf("pairHandler: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ac, err := r.Cookie(ascn)
+	if err == nil {
+		log.Printf("pairHandler: got auth cookie")
+		user := appUser{}
+		err := asc.Decode(ascn, ac.Value, &user)
+		if err == nil {
+			log.Print("pairHandler: allready authenticated")
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
 
-		//TODO confront passphrase timer with phrase
-		if passphraseUrl == "" {
+		log.Printf("pairHandler: have auth cookie but cant decode: %s", err.Error())
+		if ascn != pscn {
+			log.Printf("pairHandler: auth cookie can NOT be pair cookie")
+			//delete auth cookie
+			ac = &http.Cookie{
+				Name:    ascn,
+				Value:   "",
+				Expires: time.Unix(0, 0),
+				Path:    "/",
+			}
+			http.SetCookie(w, ac)
+			log.Print("pairHandler: corrupt auth cookie set to delete")
+		}
+		log.Printf("pairHandler: auth cookie can also be pair cookie")
+	} else {
+		log.Printf("pairHandler: don't have auth cookie: %s", err.Error())
+	}
+
+	if app.authPassLen > 0 {
+		passphraseUrl := r.URL.Path
+		pc, err := r.Cookie(pscn)
+		if err != nil {
+			log.Printf("pairHandler: no request pair cookie: %s", err.Error())
+			if passphraseUrl != "" {
+				log.Print("pairHandler: url not empty")
+				http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
+				return
+			}
+
+			//generate password
 			if err := app.authNewPassword(); err != nil {
 				log.Print(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-
 			passphrase := hex.EncodeToString(app.authPassBytes)
+			log.Printf("pairHandler: passphrase generated: %s", passphrase)
 			passphraseServer := passphrase[:len(passphrase)/2]
 			passphraseClient := passphrase[len(passphrase)/2:]
-			fmt.Println(strings.Repeat("*", 30))
-			//TODO split passphrase to improve readability
-			fmt.Println("Passphrase:", passphraseServer)
-			fmt.Println(strings.Repeat("*", 30))
 
-			//TODO duplicate code
-			encoded, err := pairCookie.Encode(cookieName, passphraseClient)
+			//set pair cookie
+			encoded, err := psc.Encode(pscn, passphraseClient)
 			if err != nil {
 				log.Printf("pairHandler: pair cookie encoding error: %s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			cookie := &http.Cookie{
-				Name:    cookieName,
+			pc = &http.Cookie{
+				Name:    pscn,
 				Value:   encoded,
 				Expires: time.Now().Add(app.authPassDuration),
-				Path:    "/pair",
+				Path:    "/pair/",
 			}
-			http.SetCookie(w, cookie)
+			http.SetCookie(w, pc)
 
+			//show password
+			fmt.Println(strings.Repeat("*", 30))
+			//TODO split passphrase to improve readability
+			fmt.Println("Passphrase:", passphraseServer)
+			fmt.Println(strings.Repeat("*", 30))
+			log.Printf("pairHandler: pair cookie generated")
+
+			//show pair form
 			if err := app.pairTemplate.Execute(w, struct{}{}); err != nil {
 				log.Print(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			log.Printf("pair page served: %s", r.RemoteAddr)
+			log.Printf("pairHandler: pair page served: %s", r.RemoteAddr)
 			return
 		}
 
-		cookie, err := r.Cookie(cookieName)
-		if err != nil {
-			//TODO better logic!
-			errStr := "pairHandler: don't have pair cookie: " + err.Error()
-			log.Print(errStr)
-			http.Error(w, errStr, http.StatusUnauthorized)
-			//TODO redirect
-			return
-		}
-		passphraseCookie := ""
-		if err := pairCookie.Decode(cookieName, cookie.Value, &passphraseCookie); err != nil {
-			//delete cookie
-			cookie := &http.Cookie{
-				Name:    cookieName,
+		log.Printf("pairHandler: got pair cookie")
+		pcp := ""
+		if err := psc.Decode(pscn, pc.Value, &pcp); err != nil {
+			log.Printf("pairHandler: can't decode request pair cookie: %s", err)
+			//delete pair cookie
+			pc = &http.Cookie{
+				Name:    pscn,
 				Value:   "",
 				Expires: time.Unix(0, 0),
-				Path:    "/pair",
+				Path:    "/pair/",
 			}
-			http.SetCookie(w, cookie)
+			http.SetCookie(w, pc)
+			log.Print("pairHandler: corrupt pair cookie set to delete")
 
-			errStr := "pairHandler: error encoding pair cookie: " + err.Error()
-			log.Print(errStr)
-			http.Error(w, errStr, http.StatusUnauthorized)
-			//TODO redirect
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
+			//TODO show why invalid. expired? edited?
+			//TODO message via flash cookie?
+			//TODO attempt to guess cookie? do something!
 			return
 		}
 
-		password, err := hex.DecodeString(passphraseUrl + passphraseCookie)
+		log.Printf("pairHandler: request pair cookie decoded, got pair cookie passphrase: %s", pcp)
+		if passphraseUrl == "" {
+			log.Printf("pairHandler: url passphrase missing")
+			//show pair form
+			if err := app.pairTemplate.Execute(w, struct{}{}); err != nil {
+				log.Print(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			log.Printf("pairHandler: pair page served: %s", r.RemoteAddr)
+			//TODO extend password & cookie expiration?
+			return
+		}
+
+		log.Printf("pairHandler: got url passphrase: %s", passphraseUrl)
+		log.Printf("pairHandler: got passphrase: %s", passphraseUrl+pcp)
+		password, err := hex.DecodeString(passphraseUrl + pcp)
 		if err != nil {
-			log.Printf("pairHandler: decoding passphrase error: %s", err)
+			log.Printf("pairHandler: decoding passphrase error: %s", err.Error())
 			app.authClearPassword()
+		} else {
+			log.Printf("pairHandler: got password from passphrase")
 		}
 
 		if err != nil || !app.auth(password) {
-			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			log.Print("pairHandler: wrong passphrase")
+			//delete pair cookie
+			pc = &http.Cookie{
+				Name:    pscn,
+				Value:   "",
+				Expires: time.Unix(0, 0),
+				Path:    "/pair/",
+			}
+			http.SetCookie(w, pc)
+			log.Print("pairHandler: invalid pair cookie set to delete")
+
 			//TODO user misses passphrase for more times, block
+			//TODO message via flash cookie?
+			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
+
+		//delete pair cookie
+		pc = &http.Cookie{
+			Name:    pscn,
+			Value:   "",
+			Expires: time.Unix(0, 0),
+			Path:    "/pair/",
+		}
+		http.SetCookie(w, pc)
+		log.Print("pairHandler: correct pair cookie set to delete")
+
+		log.Print("pairHandler: passphrase is correct")
+	} else {
+		log.Print("pairHandler: no password required")
 	}
 
-	cookieName, authCookie, err := app.newAuthSecureCookie()
-	if err != nil {
-		log.Print(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	log.Print("pairHandler: pair user")
 
 	user := appUser{
 		Agent: r.UserAgent(),
 	}
-	encoded, err := authCookie.Encode(cookieName, user)
+	encoded, err := asc.Encode(ascn, user)
 	if err != nil {
 		log.Printf("pairHandler: auth cookie encoding error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	cookie := &http.Cookie{
-		Name:    cookieName,
+	ac = &http.Cookie{
+		Name:    ascn,
 		Value:   encoded,
 		Expires: time.Now().Add(app.authCookeieDuration),
 		Path:    "/",
 	}
-	http.SetCookie(w, cookie)
+	http.SetCookie(w, ac)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	log.Print("pairHandler: paired")
 }

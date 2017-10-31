@@ -2,6 +2,9 @@
 <html>
 	<head>
 		<title>xRemoteControl | pair</title>
+
+		<script type="text/javascript" src="/js/jquery-3.2.1.min.js"></script>
+		<script type="text/javascript" src="/js/pair.js"></script>
 <style>
 body {
 	margin:0;
@@ -16,6 +19,9 @@ body * {
 </style>
 	</head>
 	<body>
-		pair
+		<form id="pair_form">
+			<input type="text" name="passphrase" placeholder="type passphrase" autofocus />
+			<input type="submit" name="submit" value="submiit"/>
+		</form>
 	</body>
 </html>
