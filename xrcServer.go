@@ -38,6 +38,7 @@ type application struct {
 	// config
 	port, assets, config string
 	noTLS                bool
+	clientDebug          bool
 
 	authMx              *sync.Mutex
 	authPassLen         int
@@ -72,6 +73,7 @@ func main() {
 	flag.StringVar(&app.assets, "assets", "./assets", "`path` to assets directory for http serving")
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
+	flag.BoolVar(&app.clientDebug, "debug-client", false, "show debuging info in served client app")
 	flag.IntVar(&app.authPassLen, "password", 4, "`length` of generated authentication password string. 0 means no password.")
 	flag.Parse()
 	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))

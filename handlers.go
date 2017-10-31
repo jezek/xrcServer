@@ -76,7 +76,6 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 		//log.Print("authenticate: handler")
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
-			//TODO auth page redirect
 			log.Print("authenticate: handler: user has no auth cookie")
 			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
@@ -329,8 +328,10 @@ func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		UserConfig template.JS
+		Debug      bool
 	}{
 		template.JS(string(userConfig)),
+		app.clientDebug,
 	}
 
 	//log.Printf("homeHandler: template \"%s\"", app.homeTemplate.Name())

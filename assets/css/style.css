@@ -118,6 +118,7 @@ button.locked, .button.locked {
 	max-height: 1.5cm;
 	display: block;
 	position: relative;
+	margin: 0 auto;
 }
 
 #keypage button.modifier {
@@ -137,6 +138,7 @@ button.locked, .button.locked {
 	justify-content: space-between;
 }
 
+/*TODO input & modifiers allways on top if scroling*/
 #keypage .group.input {
 	top: 0;
 	left: 0;
@@ -264,4 +266,8 @@ button.locked, .button.locked {
 #ttcpage .outer.down,
 #ttcpage .inner.down {
 	border: 1px inset white;
+}
+
+#noWebSocketPage {
+	padding: 0.5em;
 }

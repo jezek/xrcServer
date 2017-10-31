@@ -3,9 +3,8 @@
 $(function() {
 	log("init");
 
-	//prevent context munu cause long tap produces right click on chromiuim
 	//TODO to options
-	//window.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+	//prevent context munu cause long tap produces right click on chromiuim
 	$(".page").on("contextmenu", function(e) {
 		e.preventDefault();
 	});
@@ -26,10 +25,6 @@ $(function() {
 		log("tabs.pages.keypage.header selected");
 		keyinputs.focus();
 	});
-
-	//if (tabs.selected) {
-	//	$(tabs.selected).trigger("select");
-	//}
 
 
 	$("#logpage .clear").on("click", function(e) {
@@ -161,6 +156,10 @@ $(function() {
 		socket.onclose = function(evt) {
 			log("WebSocket closed");
 
+			if (typeof(userConfig) == "object") {
+				userConfig.socket = null;
+			}
+
 			pad.off("touchtap");
 			pad.off("touchdoubletap");
 			pad.off("touchmoverelative");
@@ -183,7 +182,9 @@ $(function() {
 				val.hide();
 			});
 			$(tabs.pages.reload.header).show();
-			$(tabs.pages.logpage.header).show();
+			if(document.getElementById("logpage") !== null) {
+				$(tabs.pages.logpage.header).show();
+			}
 			tabs.select(tabs.pages.reload.header);
 
 			var timer = $("#reload .timer");
@@ -256,12 +257,14 @@ $(function() {
 		};
 	}
 	else {
-		log("Your browser does not support WebSockets.");
+		log("Your browser does not support WebSockets", {color:"red"});
 		tabs.tabs.forEach(function(val, key) {
 				$(key).hide();
 				val.hide();
 		});
-		$(tabs.pages.logpage.header).show();
-		tabs.select(tabs.pages.logpage.header);
+		$("#noWebSocketPage").show();
+		if(document.getElementById("logpage") !== null) {
+			$(tabs.pages.logpage.header).show();
+		}
 	}
 });

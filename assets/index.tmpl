@@ -6,6 +6,9 @@
 
 		<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
 		<script type="text/javascript" src="js/helpers.js"></script>
+{{if not .Debug -}}
+		<script type="text/javascript">log=function(){};</script>
+{{end -}}
 		<script type="text/javascript" src="js/cookieConfig.js"></script>
 		<script type="text/javascript">
 			var userConfig = new cookieConfig({{.UserConfig}});
@@ -26,8 +29,10 @@
 			<a href="#" class="tab" data-for="touchpage">touch</a>
 			<a href="#" class="tab" data-for="keypage">key</a>
 			<a href="#" class="tab" data-for="reload" style="display:none">reload</a>
+{{if .Debug -}}
 			<a href="#" class="tab" data-for="ttcpage">ttc</a>
 			<a href="#" class="tab" data-for="logpage">log</a>
+{{end -}}
 		</div>
 		<div id="touchpage" class="page">
 			<div id="touchpad" class="touchpad"></div>
@@ -104,6 +109,7 @@
 				<a href="#" class="stop">stop</a>
 			</div>
 		</div>
+{{if .Debug -}}
 		<div id="ttcpage" class="page">
 			<p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.</p>
 			<div class="outer">
@@ -130,6 +136,10 @@
 			<div id="log">
 				<p>loading...</p>
 			</div>
+		</div>
+{{end -}}
+		<div id="noWebSocketPage" class="page">
+			Your browser does not support WebSockets
 		</div>
 	</body>
 </html>
