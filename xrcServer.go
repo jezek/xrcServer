@@ -94,19 +94,19 @@ func main() {
 	}
 	app.display = d
 
+	// load or generate certificates
+	certFile := filepath.Join(app.config, "cert.pem")
+	keyFile := filepath.Join(app.config, "key.pem")
+	if err := app.certificates(certFile, keyFile); err != nil {
+		log.Fatal(err)
+	}
+
+	//start net listener
 	nl, err := net.Listen("tcp", ":"+app.port)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("xrcServer listens on port :%s", app.port)
-
-	// load or generate certificates
-	certFile := filepath.Join(app.config, "cert.pem")
-	keyFile := filepath.Join(app.config, "key.pem")
-
-	if err := app.certificates(certFile, keyFile); err != nil {
-		log.Fatal(err)
-	}
 
 	interruptCancel := make(chan struct{})
 
@@ -340,18 +340,15 @@ func (app *application) auth(b []byte) bool {
 	defer app.authMx.Unlock()
 
 	if app.authPassLen <= 0 {
-		log.Print("auth: pen=0, true")
 		return true
 	}
 
 	if app.authPassBytes == nil {
-		log.Print("auth: nil, false")
 		return false
 	}
 
 	if app.authPassExpire.Before(time.Now()) {
 		// expired
-		log.Print("auth: expired, flase")
 		return false
 	}
 
