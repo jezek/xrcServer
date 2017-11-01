@@ -1,5 +1,6 @@
 //require jQuery
 //require helpers.js
+//TODO keyinput classes (focused, sending req, waiting resp, got resp., ...) 
 var keyinputs = {
 	socket: null,
 	keyinput: {},

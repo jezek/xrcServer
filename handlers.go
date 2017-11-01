@@ -532,6 +532,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 				send <- msgBytes
 				//log.Printf("websocket.Handler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
 
+				//TODO if mate-settings-daemon detected, give an option to restart it
 			default:
 				log.Printf("websocket.Handler: unknown type: %s", m.Type)
 			}

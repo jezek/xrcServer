@@ -7,6 +7,7 @@ function xpath(el) {
   return xpath(el.parentNode) + '/' + el.tagName.toLowerCase() + (sames.length > 1 ? '['+([].indexOf.call(sames, el)+1)+']' : '');
 }
 
+//TODO to own file log.js (load only on debug, else load noLog.js)
 function log(t, opt) {
 	opt = opt || {};
 	var elm = $('<p/>');

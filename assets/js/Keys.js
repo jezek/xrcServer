@@ -6,6 +6,9 @@ var keys = {
 	key: {}
 };
 
+//TODO subscribe for mapping change, diferentiate between mapped & unmapped keys
+//TODO in the future map selected unmapped keys
+//TODO in future subscribe for keys watch on server side (you can see if key is pressed)????
 keys.init = function(socket) {
 	log("init keys");
 	this.socket = socket;

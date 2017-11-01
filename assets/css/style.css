@@ -68,6 +68,7 @@ div.page {
 	right:0;
 }
 
+/*TODO button meaningfull classes & coloring */
 button, .button {
 	background: black;
 	color: white;
@@ -118,7 +119,6 @@ button.locked, .button.locked {
 	max-height: 1.5cm;
 	display: block;
 	position: relative;
-	margin: 0 auto;
 }
 
 #keypage button.modifier {
@@ -138,6 +138,7 @@ button.locked, .button.locked {
 	justify-content: space-between;
 }
 
+/*TODO keyinput focus color */
 /*TODO input & modifiers allways on top if scroling*/
 #keypage .group.input {
 	top: 0;

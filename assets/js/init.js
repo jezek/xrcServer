@@ -3,12 +3,15 @@
 $(function() {
 	log("init");
 
-	//TODO to options
+	//TODO options & config pages
+
+	//TODO prevent context menu to options (default: do not prevent)
 	//prevent context munu cause long tap produces right click on chromiuim
 	$(".page").on("contextmenu", function(e) {
 		e.preventDefault();
 	});
 
+	//TODO to own file (load only on debug)
 	//ttc test
 	$("#ttcpage div")
 	.ttc()
@@ -20,13 +23,13 @@ $(function() {
 	//ttc test
 
 	var tabs = new Tabs("#header .tab");
-
 	$(tabs.pages.keypage.header).on("select", function(e) {
 		log("tabs.pages.keypage.header selected");
 		keyinputs.focus();
 	});
 
 
+	//TODO to log.js
 	$("#logpage .clear").on("click", function(e) {
 		e.preventDefault();
 		$("#log").empty();
@@ -50,10 +53,15 @@ $(function() {
 		socket.onopen = function(evt) {
 			log("WebSocket connected");
 
+			//TODO really? this is checked, but others not?
+			//TODO check for required components on top
 			if (typeof(userConfig) == "object") {
+				//TODO to init like keys
 				userConfig.socket = socket;
 			}
 
+			//TODO to init like keys
+			//TODO to it's file, like keys
 			pad.on("touchtap", function() {
 				log("pad on: touchtap");
 				socket.send(JSON.stringify({
@@ -156,10 +164,13 @@ $(function() {
 		socket.onclose = function(evt) {
 			log("WebSocket closed");
 
+			//TODO really? this is checked, but others not?
+			//TODO to destroy like keys
 			if (typeof(userConfig) == "object") {
 				userConfig.socket = null;
 			}
 
+			//TODO to destroy like keys
 			pad.off("touchtap");
 			pad.off("touchdoubletap");
 			pad.off("touchmoverelative");
@@ -215,6 +226,7 @@ $(function() {
 						}, 1000);
 					}
 				});
+				//TODO why is this inside click?
 				$("#reload .stop").on("click", function(e){
 					e.preventDefault();
 					if (interval != null) {

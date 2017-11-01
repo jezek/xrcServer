@@ -1,3 +1,5 @@
+//TODO tuchpad & touchbuttons unification & init/destroy like keys/keinput
+//TODO make work with mouse???
 //require jQuery
 function TouchPad(elm, opt) {
 	this.elm = $(elm);
