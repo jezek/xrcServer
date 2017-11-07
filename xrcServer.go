@@ -310,7 +310,7 @@ func (app *application) authNewPassword() error {
 	// expired
 	if app.authPassBytes != nil && app.authPassExpire.Before(time.Now()) {
 		app.authPassBytes = nil
-		log.Print("authNewPassword: expired")
+		//log.Print("authNewPassword: expired")
 	}
 
 	if app.authPassBytes == nil {
@@ -320,7 +320,9 @@ func (app *application) authNewPassword() error {
 			app.authPassBytes = nil
 			return err
 		}
-		log.Print("authNewPassword: new created")
+		//log.Print("authNewPassword: new created")
+	} else {
+		//log.Print("authNewPassword: prolonged")
 	}
 
 	app.authPassExpire = time.Now().Add(app.authPassDuration)
@@ -332,7 +334,7 @@ func (app *application) authClearPassword() {
 	defer app.authMx.Unlock()
 
 	app.authPassBytes = nil
-	log.Print("authClearPassword: cleared")
+	//log.Print("authClearPassword: cleared")
 }
 
 func (app *application) auth(b []byte) bool {
