@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -35,7 +34,7 @@ type application struct {
 	pairTemplate *template.Template
 	certs        []tls.Certificate
 
-	// config
+	//config
 	port, assets, config string
 	noTLS                bool
 	clientDebug          bool
@@ -46,6 +45,10 @@ type application struct {
 	authPassExpire      time.Time
 	authPassDuration    time.Duration
 	authCookeieDuration time.Duration
+
+	//cache
+	privateKeyCached []byte
+	publicKeyCached  []byte
 }
 
 func main() {
@@ -68,7 +71,7 @@ func main() {
 		authCookeieDuration: 365 * 24 * time.Hour,
 	}
 
-	// Flags
+	//Flags
 	flag.StringVar(&app.port, "port", "10905", "http(s) service `port number`")
 	flag.StringVar(&app.assets, "assets", "./assets", "`path` to assets directory for http serving")
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
@@ -96,7 +99,7 @@ func main() {
 	}
 	app.display = d
 
-	// load or generate certificates
+	//load or generate certificates
 	certFile := filepath.Join(app.config, "cert.pem")
 	keyFile := filepath.Join(app.config, "key.pem")
 	if err := app.certificates(certFile, keyFile); err != nil {
@@ -133,7 +136,7 @@ func main() {
 				}
 
 				if app.noTLS == false {
-					// use tls
+					//use tls
 					s.Handler = https.EnforceTLS(s.Handler)
 					s.TLSConfig = &tls.Config{
 						Certificates: app.certs,
@@ -173,7 +176,7 @@ func interrupt(cancel <-chan struct{}) {
 	defer signal.Stop(c)
 	select {
 	case sig := <-c:
-		fmt.Println() // Prevent un-terminated ^C character in terminal
+		fmt.Println() //Prevent un-terminated ^C character in terminal
 		log.Printf("received signal: %s", sig)
 	case <-cancel:
 	}
@@ -277,25 +280,43 @@ func (app *application) certificates(certFile, keyFile string) error {
 }
 
 func (app *application) privateKey() ([]byte, error) {
-	//TODO cache
-	switch key := app.certs[0].PrivateKey.(type) {
-	case *rsa.PrivateKey:
-		return x509.MarshalPKCS1PrivateKey(key), nil
-	case *ecdsa.PrivateKey:
-		return x509.MarshalECPrivateKey(key)
+	if app.privateKeyCached == nil {
+		switch key := app.certs[0].PrivateKey.(type) {
+		case *rsa.PrivateKey:
+			app.privateKeyCached = x509.MarshalPKCS1PrivateKey(key)
+		case *ecdsa.PrivateKey:
+			pk, err := x509.MarshalECPrivateKey(key)
+			if err != nil {
+				return nil, fmt.Errorf("privateKey: %s", err.Error())
+			}
+			app.privateKeyCached = pk
+		default:
+			return nil, fmt.Errorf("privateKey: found unknown private key type in PKCS#8 wrapping: %T", key)
+		}
 	}
-	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+
+	return app.privateKeyCached, nil
 }
 
 func (app *application) publicKey() ([]byte, error) {
-	//TODO cache
-	switch key := app.certs[0].PrivateKey.(type) {
-	case *rsa.PrivateKey:
-		return x509.MarshalPKCS1PrivateKey(key), nil
-	case *ecdsa.PrivateKey:
-		return x509.MarshalECPrivateKey(key)
+	if app.publicKeyCached == nil {
+		var publicKey interface{}
+		switch key := app.certs[0].PrivateKey.(type) {
+		case *rsa.PrivateKey:
+			publicKey = &key.PublicKey
+		case *ecdsa.PrivateKey:
+			publicKey = &key.PublicKey
+		default:
+			return nil, fmt.Errorf("publicKey: found unknown private key type in PKCS#8 wrapping: %T", key)
+		}
+		pk, err := x509.MarshalPKIXPublicKey(publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("publicKey: %s", err.Error())
+		}
+		app.publicKeyCached = pk
 	}
-	return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+
+	return app.publicKeyCached, nil
 }
 
 func (app *application) authNewPassword() error {
@@ -307,7 +328,7 @@ func (app *application) authNewPassword() error {
 		return nil
 	}
 
-	// expired
+	//expired
 	if app.authPassBytes != nil && app.authPassExpire.Before(time.Now()) {
 		app.authPassBytes = nil
 		//log.Print("authNewPassword: expired")
@@ -352,7 +373,7 @@ func (app *application) auth(b []byte) bool {
 	}
 
 	if app.authPassExpire.Before(time.Now()) {
-		// expired
+		//expired
 		return false
 	}
 

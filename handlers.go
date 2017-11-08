@@ -32,7 +32,7 @@ func (app *application) newAuthSecureCookie() (string, *securecookie.SecureCooki
 		return "", nil, err
 	}
 	cookieHash := sha1.Sum(pub)
-	cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
+	cookieName := base64.RawURLEncoding.EncodeToString(cookieHash[:])
 
 	priv, err := app.privateKey()
 	if err != nil {
@@ -50,7 +50,7 @@ func (app *application) newPairSecureCookie() (string, *securecookie.SecureCooki
 		return "", nil, err
 	}
 	cookieHash := sha1.Sum(pub)
-	cookieName := base64.RawStdEncoding.EncodeToString(cookieHash[:])
+	cookieName := base64.RawURLEncoding.EncodeToString(cookieHash[:])
 
 	priv, err := app.privateKey()
 	if err != nil {
@@ -66,7 +66,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 	//log.Print("authenticate")
 	cookieName, sCookie, err := app.newAuthSecureCookie()
 	if err != nil {
-		log.Print("authenticate: new auth securecookie error: %s", err.Error())
+		log.Printf("authenticate: new auth securecookie error: %s", err.Error())
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		})
@@ -181,8 +181,9 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 				Expires: time.Now().Add(app.authPassDuration),
 				Path:    "/pair/",
 			}
+			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
 			http.SetCookie(w, pc)
-			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie generated")
+			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
 
 			//show password
 			fmt.Println(strings.Repeat("*", 30))
