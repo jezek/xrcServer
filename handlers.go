@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
@@ -38,7 +39,7 @@ func (app *application) newAuthSecureCookie() (string, *securecookie.SecureCooki
 	if err != nil {
 		return cookieName, nil, err
 	}
-	//TODO user password via securecookie block encryption
+	//TODO? user password via securecookie block encryption
 	sCookie := securecookie.New(priv, nil)
 	sCookie.MaxAge(int(app.authCookeieDuration.Seconds()))
 	return cookieName, sCookie, nil
@@ -89,7 +90,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 		}
 
 		if user.Agent != r.UserAgent() {
-			//TODO user agent is veery similiar ... maybe update? (if user uses password, update agent)
+			//TODO? user agent is veery similiar ... maybe update (if user uses password, update agent)
 			log.Printf("authenticate: handler: auth cookie UserAgent changed!")
 
 			//delete auth cookie
@@ -97,7 +98,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 			cookie.Expires = time.Unix(0, 0)
 			http.SetCookie(w, cookie)
 
-			//TODO message via flash cookie or parameter?
+			//TODO? message via flash cookie or parameter
 			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
@@ -187,8 +188,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 
 			//show password
 			fmt.Println(strings.Repeat("*", 30))
-			//TODO split passphrase to improve readability
-			fmt.Println("Passphrase:", passphraseServer)
+			fmt.Println("Passphrase:", insertEveryN(" ", passphraseServer, 4))
 			fmt.Println(strings.Repeat("*", 30))
 			return nil
 		}
@@ -234,9 +234,9 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			//log.Print("pairHandler: corrupt pair cookie set to delete")
 
 			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
-			//TODO show why invalid. expired? edited?
-			//TODO message via flash cookie?
-			//TODO attempt to guess cookie? do something!
+			//TODO? show why invalid. expired edited?
+			//TODO? message via flash cookie
+			//TODO attempt to guess cookie do something!
 			return
 		}
 
@@ -257,13 +257,13 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			log.Printf("pairHandler: pair page served: %s", r.RemoteAddr)
-			//TODO extend password & cookie expiration?
 			return
 		}
 
-		//log.Printf("pairHandler: got url passphrase: %s", passphraseUrl)
-		//log.Printf("pairHandler: got passphrase: %s", passphraseUrl+pcp)
-		password, err := hex.DecodeString(passphraseUrl + pcp)
+		passphrase := stripWhiteSpaces(passphraseUrl)
+		//log.Printf("pairHandler: got url passphrase: %s", passphrase)
+		//log.Printf("pairHandler: got combined passphrase: %s", passphrase+pcp)
+		password, err := hex.DecodeString(passphrase + pcp)
 		if err != nil {
 			log.Printf("pairHandler: decoding passphrase error: %s", err.Error())
 			app.authClearPassword()
@@ -284,7 +284,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			//log.Print("pairHandler: invalid pair cookie set to delete")
 
 			//TODO user misses passphrase for more times, block
-			//TODO message via flash cookie?
+			//TODO? message via flash cookie
 			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			return
 		}
@@ -565,4 +565,32 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 			}
 		}
 	}).ServeHTTP(w, r)
+}
+
+func insertEveryN(what, where string, n int) string {
+	if what == "" || where == "" || n == 0 || n >= len(where) {
+		return where
+	}
+	res := []rune{}
+	whereRunes := []rune(where)
+	for i := 0; i < len(whereRunes)/n; i++ {
+		res = append(res, whereRunes[i*n:i*n+n]...)
+		if i != len(whereRunes)/n-1 {
+			res = append(res, []rune(what)...)
+		}
+	}
+	if len(whereRunes)%n > 0 {
+		res = append(res, []rune(what)...)
+		res = append(res, whereRunes[len(whereRunes)/n*n:]...)
+	}
+	return string(res)
+}
+
+func stripWhiteSpaces(where string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, where)
 }

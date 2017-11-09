@@ -77,7 +77,7 @@ func main() {
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
 	flag.BoolVar(&app.clientDebug, "debug-client", false, "show debuging info in served client app")
-	flag.IntVar(&app.authPassLen, "password", 4, "`length` of generated authentication password string. 0 means no password.")
+	flag.IntVar(&app.authPassLen, "password", 8, "`length` of generated authentication password string. 0 means no password.")
 	flag.Parse()
 	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
 	app.pairTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "pair.tmpl")))
@@ -164,7 +164,9 @@ func main() {
 		},
 	); len(errors) > 0 {
 		for _, err := range errors {
-			log.Print(err)
+			if _, ok := err.(runStopErr); !ok {
+				log.Print(err)
+			}
 		}
 	}
 }
@@ -182,6 +184,7 @@ func interrupt(cancel <-chan struct{}) {
 	}
 }
 
+//TODO? to new package with evolution's paralel & serial
 type runner struct {
 	run  func() error
 	stop func() error
@@ -191,6 +194,13 @@ type runnererror struct {
 	err   error
 }
 
+type runStopErr struct {
+	error
+}
+
+func (_ runStopErr) runStopError() {}
+
+//TODO test
 func run(runners ...runner) []error {
 	if len(runners) == 0 {
 		return nil
@@ -218,8 +228,8 @@ func run(runners ...runner) []error {
 		if i == rerr.index {
 			continue
 		}
+		//TODO if stop fails, dont wait for its return
 		if serr := r.stop(); serr != nil {
-			//TODO diferentiate between run errors and stop errors
 			res = append(res, serr)
 		}
 	}
@@ -227,7 +237,7 @@ func run(runners ...runner) []error {
 	for i := 0; i < cap(runners)-1; i++ {
 		rerr = <-errors
 		if rerr.err != nil {
-			res = append(res, rerr.err)
+			res = append(res, runStopErr{rerr.err})
 		}
 	}
 	return res

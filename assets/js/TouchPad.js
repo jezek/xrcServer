@@ -1,5 +1,5 @@
 //TODO tuchpad & touchbuttons unification & init/destroy like keys/keinput
-//TODO make work with mouse???
+//TODO? make work with mouse. on click switch to mouse mode, on touch to finger mode. or make new tab? mouse + keyboard
 //require jQuery
 function TouchPad(elm, opt) {
 	this.elm = $(elm);

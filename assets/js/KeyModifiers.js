@@ -1,7 +1,7 @@
 //require jQuery
 //require helpers.js
-//TODO option on how to use modifiers (direct send or send with key)
-//TODO in future subscribe for modifiers watch on server side (yo can see if key is pressed)????
+//TODO? option on how to use modifiers (direct send or send with key)
+//TODO? in future subscribe for modifiers watch on server side (yo can see if key is pressed)???
 var modifiers = {
 	modifier: {},
 };
