@@ -7,10 +7,14 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -18,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/gorilla/securecookie"
+	qrcode "github.com/skip2/go-qrcode"
 	"golang.org/x/net/websocket"
 )
 
@@ -185,11 +190,43 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
 			http.SetCookie(w, pc)
 			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
+			passphraseServerHumanReadable := insertEveryN(" ", passphraseServer, 4)
+			//show passphrase
+			fmt.Println(strings.Repeat("*", 30))
+			fmt.Println("Passphrase:", passphraseServerHumanReadable)
+			fmt.Println(strings.Repeat("*", 30))
 
-			//show password
-			fmt.Println(strings.Repeat("*", 30))
-			fmt.Println("Passphrase:", insertEveryN(" ", passphraseServer, 4))
-			fmt.Println(strings.Repeat("*", 30))
+			//store passphrase to tmp file
+			if err := app.pairPassphraseToFile([]byte(passphraseServerHumanReadable), "passphrase.txt"); err != nil {
+				log.Printf("generateOrProlongPassword: can't create tmp text file: %v", err)
+			}
+
+			ip, err := externalIP()
+			if err != nil {
+				log.Printf("generateOrProlongPassword: obtaining external ip address error: %v", err)
+			} else {
+				//create passphrase url for LAN
+				protocol := "http"
+				if app.noTLS == false {
+					protocol += "s"
+				}
+				passphraseServerURL := protocol + "://" + ip.String() + ":" + app.port + "/pair/" + passphraseServer
+
+				//store passphrase url to tmp file
+				if err := app.pairPassphraseToFile([]byte(passphraseServerURL), "passphrase.url"); err != nil {
+					log.Printf("generateOrProlongPassword: can't create tmp url file: %v", err)
+				}
+
+				//create and store passphrase url as qr code in png file
+				if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
+					log.Printf("generateOrProlongPassword: qr code encoding error: %v", err)
+				} else {
+					if err := app.pairPassphraseToFile(png, "passphrase.png"); err != nil {
+						log.Printf("generateOrProlongPassword: qr code saving error: %v", err)
+					}
+				}
+			}
+
 			return nil
 		}
 
@@ -593,4 +630,58 @@ func stripWhiteSpaces(where string) string {
 		}
 		return r
 	}, where)
+}
+
+//https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
+func externalIP() (net.IP, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue // interface down
+		}
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue // loopback interface
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not an ipv4 address
+			}
+			return ip, nil
+		}
+	}
+	return nil, errors.New("externalIP: are you connected to the network?")
+}
+
+func (app *application) pairPassphraseToFile(what []byte, where string) error {
+	fileName := filepath.Join(os.TempDir(), "xrcServer."+app.port+"."+where)
+	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := file.Write(what); err != nil {
+		return err
+	}
+	//TODO? remove tmp file after expire
+	log.Printf("saved passphrase to: %s", fileName)
+	return nil
 }
