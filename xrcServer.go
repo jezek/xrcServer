@@ -200,44 +200,53 @@ type runStopErr struct {
 
 func (_ runStopErr) runStopError() {}
 
-//TODO test
-func run(runners ...runner) []error {
+//runs all runners .run function concurently and waits for first to terminate.
+//then closes left runners with .stop function and waits for all to finish.
+//if closing fails on runner, runner will not be waited for finish
+func run(runners ...runner) map[int]error {
 	if len(runners) == 0 {
 		return nil
 	}
 
 	if len(runners) == 1 {
-		return []error{runners[0].run()}
+		res := map[int]error{}
+		if err := runners[0].run(); err != nil {
+			res[0] = err
+		}
+		return res
 	}
 
-	res := make([]error, 0)
+	res := map[int]error{}
 	errors := make(chan runnererror, len(runners))
 
-	for i, r := range runners {
-		go func(i int, f func() error) {
-			errors <- runnererror{i, f()}
-		}(i, r.run)
-	}
-
-	rerr := <-errors
-	if rerr.err != nil {
-		res = append(res, rerr.err)
-	}
+	active := make(map[int]runner, len(runners))
 
 	for i, r := range runners {
-		if i == rerr.index {
-			continue
-		}
-		//TODO if stop fails, dont wait for its return
-		if serr := r.stop(); serr != nil {
-			res = append(res, serr)
+		go func(i int, r runner) {
+			active[i] = r
+			err := r.run()
+			delete(active, i)
+			errors <- runnererror{i, err}
+		}(i, r)
+	}
+
+	runerr := <-errors
+	if runerr.err != nil {
+		res[runerr.index] = runerr.err
+	}
+
+	for i, r := range active {
+		if err := r.stop(); err != nil {
+			res[i] = err
+			delete(active, i)
 		}
 	}
 
-	for i := 0; i < cap(runners)-1; i++ {
-		rerr = <-errors
-		if rerr.err != nil {
-			res = append(res, runStopErr{rerr.err})
+	for len(active) > 0 {
+		runerr = <-errors
+		_, inres := res[runerr.index]
+		if runerr.err != nil && inres == false {
+			res[runerr.index] = runStopErr{runerr.err}
 		}
 	}
 	return res
