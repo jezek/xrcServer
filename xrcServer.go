@@ -222,15 +222,15 @@ func run(runners ...runner) map[int]error {
 	active := make(map[int]runner, len(runners))
 
 	for i, r := range runners {
+		active[i] = r
 		go func(i int, r runner) {
-			active[i] = r
 			err := r.run()
-			delete(active, i)
 			errors <- runnererror{i, err}
 		}(i, r)
 	}
 
 	runerr := <-errors
+	delete(active, runerr.index)
 	if runerr.err != nil {
 		res[runerr.index] = runerr.err
 	}
@@ -244,6 +244,7 @@ func run(runners ...runner) map[int]error {
 
 	for len(active) > 0 {
 		runerr = <-errors
+		delete(active, runerr.index)
 		_, inres := res[runerr.index]
 		if runerr.err != nil && inres == false {
 			res[runerr.index] = runStopErr{runerr.err}
