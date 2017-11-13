@@ -273,7 +273,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 			//TODO? show why invalid. expired edited?
 			//TODO? message via flash cookie
-			//TODO attempt to guess cookie do something!
+			//TODO? attempt to guess cookie do something!
 			return
 		}
 
@@ -521,9 +521,24 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					log.Printf("websocket.Handler: key: no text, or not string: %v", m.Data["text"])
 					break
 				}
+				//TODO sending alt+tab results in s+ a+ t+ t- a-
+
 				if err := app.display.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
-					log.Printf("websocket.Handler: key: x keyboard write error: %v", err)
-					//TODO send error back
+					//log.Printf("websocket.Handler: key: x keyboard write error: %v", err)
+					msg := message{
+						m.Type,
+						map[string]interface{}{
+							"sender": m.Data["sender"],
+							"error":  err.Error(),
+						},
+					}
+					msgBytes, err := json.Marshal(msg)
+					if err != nil {
+						log.Printf("websocket.Handler: key: error message marshal error: %v", err)
+						break
+					}
+					send <- msgBytes
+					log.Printf("websocket.Handler: key: x keyboard write error sent: %#v", msg)
 					break
 				}
 				send <- []byte(msg)
@@ -538,7 +553,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					msg.Data["error"] = errStr
 					msgBytes, err := json.Marshal(msg)
 					if err != nil {
-						log.Printf("websocket.Handler: cookieConfig: sendError: message marshal error: %s", err)
+						log.Printf("websocket.Handler: cookieConfig: sendError: message marshal error: %v", err)
 						return
 					}
 					send <- msgBytes

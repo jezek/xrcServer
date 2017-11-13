@@ -106,6 +106,16 @@ function key(name) {
 
 	this.message = function(msg) {
 		log("key "+this.name+" message: "+JSON.stringify(msg));
+		if (typeof(msg.error) != "undefined") {
+			log("message with error: "+msg.error, {level:1});
+			$(this.elements)
+				.finish()
+				.css({borderColor:"red"})
+				.animate({borderColor:"initial"}, 200, "swing", function() {
+					$(this)
+						.css({borderColor:"initial"});
+				});
+		}
 		this.down = false;
 		this.updateElements();
 	};

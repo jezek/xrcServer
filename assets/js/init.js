@@ -246,25 +246,19 @@ $(function() {
 				log("no \"type\" in message", {level:1, color:"red"});
 				return;
 			}
+			log("got \""+m.type+"\": "+JSON.stringify(m.data), {level:1});
 			switch (m.type) {
 				case "keyinput":
-					log("got \"keyinput\": "+m.data.text, {level:1});
 					keyinputs.message(m.data);
 					break;
 				case "key":
-					log("got \"key\": "+m.data.name, {level:1});
 					keys.message(m.data);
 					break;
-				case "modifier":
-					log("got \"modifier\": "+m.data.name, {level:1});
-					modifiers.message(m.data);
-					break;
 				case "cookieConfig":
-					log("got \"cookieConfig\": "+m.data.updates, {level:1});
 					userConfig.message(m.data);
 					break;
 				default:
-					log("unknown \"type\": "+m.type);
+					log("unknown \"type\": "+m.type, {level:1, color:"red"});
 			}
 		};
 	}

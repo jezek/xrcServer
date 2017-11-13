@@ -240,11 +240,17 @@ function keyinput(socket, elm, name, opt) {
 	};
 
 	this.message = function(msg) {
-		pos = $(this.elm).position();
+		log("keyinput "+this.name+" message: "+JSON.stringify(msg));
+		var borderColor = "green";
+		if (typeof(msg.error) != "undefined") {
+			log("message with error: "+msg.error, {level:1});
+		  borderColor = "red";
+			msg.text = "";
+		}
 		$(this.elm)
 			.finish()
-			.css({borderColor:"green"})
-			.attr("placeholder", m.data.text)
+			.css({borderColor:borderColor})
+			.attr("placeholder", msg.text)
 		  .animate({borderColor:"initial"}, 400, "swing", function() {
 				$(this)
 					.attr("placeholder", "")
