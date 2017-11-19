@@ -129,6 +129,7 @@ function modifier(name) {
 		this.updateElements();
 		if (this.options.lockDelay > 0) {
 			lockTimer = setTimeout(function() {
+				//TODO? on lock press actually mod down and dont send with keys as pref+suff
 				log("modifier "+this.name+" lock callback", {color:"lightgreen"});
 				this.locked = true;
 				this.down = true;

@@ -516,7 +516,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 			case "keyinput", "key":
 				log.Printf("websocket.Handler: %s: %v", m.Type, m.Data)
 				text, ok := m.Data["text"].(string)
-				log.Printf("websocket.Handler: key: text codes %v", []byte(text))
+				//log.Printf("websocket.Handler: key: text codes %v", []byte(text))
 				if !ok {
 					log.Printf("websocket.Handler: key: no text, or not string: %v", m.Data["text"])
 					break
