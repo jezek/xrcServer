@@ -63,6 +63,7 @@ func main() {
 		log.Printf("hello")
 		log.Printf("logging only to Stderr")
 	}
+	//TODO this and other defers are not runned after log.Fatal or os.Exit
 	defer log.Printf("bye")
 
 	app := application{
@@ -73,14 +74,23 @@ func main() {
 
 	//Flags
 	flag.StringVar(&app.port, "port", "10905", "http(s) service `port number`")
-	flag.StringVar(&app.assets, "assets", "./assets", "`path` to assets directory for http serving")
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
 	flag.BoolVar(&app.clientDebug, "debug-client", false, "show debuging info in served client app")
 	flag.IntVar(&app.authPassLen, "password", 8, "`length` of generated authentication password string. 0 means no password.")
+
+	assets := ""
+	flag.StringVar(&assets, "assets", "", "`path` to assets directory for http serving. embeded assets are used if empty")
 	flag.Parse()
-	app.homeTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "index.tmpl")))
-	app.pairTemplate = template.Must(template.ParseFiles(filepath.Join(app.assets, "pair.tmpl")))
+
+	cleanUpAssets, err := app.parseAssets(assets)
+	if err != nil {
+		log.Printf("Error parsing assets: %v", err)
+	}
+	defer cleanUpAssets()
+
+	fmt.Scanf("press a key")
+	return
 
 	if strings.HasPrefix(app.config, "~") {
 		user, err := user.Current()
