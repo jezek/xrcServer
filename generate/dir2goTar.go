@@ -1,14 +1,17 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
 	"flag"
 	"fmt"
 	"go/format"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -36,10 +39,6 @@ func (c bytesDecCoder) decodeFuncString(variableName string) string {
 }
 
 func (c bytesDecCoder) encode(src io.Reader, dst io.Writer) (nSrc, nDst int, err error) {
-	log.Printf("hello encode")
-	defer func() {
-		log.Printf("bye encode")
-	}()
 
 	header, footer := "[]byte {", "}"
 	nr, nw := 0, 0
@@ -174,12 +173,29 @@ func main() {
 		log.Fatalf("template parse error: %v", err)
 	}
 
-	data := []byte{0, 1, 2, 63, 64, 65, 126, 127, 128, 191, 192, 193, 253, 254, 255}
-	dataEncodedBuffer := &bytes.Buffer{}
-
-	if r, w, err := coder.encode(bytes.NewReader(data), dataEncodedBuffer); err != nil {
-		log.Fatalf("data encoding error: %v (read: %d, write: %d)", err.Error(), r, w)
+	tarBuffer := &bytes.Buffer{}
+	tarFile, err := os.Create(fileBase + ".tar")
+	if err != nil {
+		log.Fatalf("tar file create error: %v", err)
 	}
+	defer tarFile.Close()
+
+	//wg := &sync.WaitGroup{}
+	//wg.Add(1)
+	//go func() {
+	//	Tar(dirAbs, tarBuffer, tarFile)
+	//	wg.Done()
+	//}()
+	Tar(dirAbs, tarBuffer, tarFile)
+
+	dataEncodedBuffer := &bytes.Buffer{}
+	if r, w, err := coder.encode(tarBuffer, dataEncodedBuffer); err != nil {
+		log.Fatalf("data encoding error: %v (read: %d, write: %d)", err.Error(), r, w)
+	} else {
+		log.Printf("data encoded. read: %d, write:%d", r, w)
+	}
+
+	//wg.Wait()
 
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, map[string]interface{}{
@@ -199,8 +215,73 @@ func main() {
 	if err != nil {
 		log.Fatalf("resulting template formating error: %v", err)
 	}
-	log.Printf("generated:\n%s\n", string(fileContent))
 
+	if err := ioutil.WriteFile(file, fileContent, 0644); err != nil {
+		log.Fatalf("file write error: %v", err)
+	}
+	log.Printf("file succesfully generated")
+
+}
+
+//from: https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
+//Tar takes a source and variable writers and walks 'source' writing each file
+//found to the tar writer; the purpose for accepting multiple writers is to allow
+//for multiple outputs (for example a file, or md5 hash)
+func Tar(src string, writers ...io.Writer) error {
+
+	// ensure the src actually exists before trying to tar it
+	if _, err := os.Stat(src); err != nil {
+		return err
+	}
+
+	mw := io.MultiWriter(writers...)
+
+	tw := tar.NewWriter(mw)
+	defer tw.Close()
+
+	// walk path
+	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+		//log.Printf("hello walk: %s", file)
+		//defer log.Printf("bye walk: %s", file)
+
+		if err != nil {
+			return err
+		}
+
+		header, err := tar.FileInfoHeader(fi, fi.Name())
+		if err != nil {
+			return err
+		}
+		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
+
+		if header.Name == "" {
+			return nil
+		}
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		//log.Printf("writen header: %s", header.Name)
+
+		if !fi.Mode().IsRegular() {
+			return nil
+		}
+
+		// open files for taring
+		f, err := os.Open(file)
+		defer f.Close()
+		if err != nil {
+			return err
+		}
+
+		n, err := io.Copy(tw, f)
+		if err != nil {
+			return err
+		}
+		log.Printf("tar added: %s (%d bytes)", header.Name, n)
+
+		return nil
+	})
 }
 
 const goTarTemplate = `

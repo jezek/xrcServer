@@ -89,9 +89,6 @@ func main() {
 	}
 	defer cleanUpAssets()
 
-	//fmt.Scanf("press a key")
-	//return
-
 	if strings.HasPrefix(app.config, "~") {
 		user, err := user.Current()
 		if err == nil {

@@ -26,11 +26,11 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 
 	var localCleanUp func()
 	defer func() {
-		log.Printf("local clean up")
+		//log.Printf("local clean up")
 		if localCleanUp != nil {
 			localCleanUp()
 		} else {
-			log.Printf("nothing to clean up localy")
+			//log.Printf("nothing to clean up localy")
 		}
 	}()
 
@@ -45,7 +45,7 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 		}
 
 		//create
-		assets, err := ioutil.TempDir(os.TempDir(), "assets")
+		assets, err := ioutil.TempDir(os.TempDir(), "xrcServer_assets_")
 		if err != nil {
 			return noCleanUpFunction, err
 		}
