@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-//go:generate go run generate/assets.go ./assets/ ./assets.tar.go
+//go:generate go run generate/dir2goTar.go -f assetsTarBytes ./assets
 
 //sets application assets directory to assetsDir and parses templates.
 //if assetsDir is empty, then a tmporary directory is created and used as application assets directory.
@@ -40,7 +40,7 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 	}
 
 	if assetsDir == "" {
-		if len(assetsTarBytes) == 0 {
+		if len(assetsTarBytes()) == 0 {
 			return noCleanUpFunction, fmt.Errorf("no assets tar bytes. use \"go generate\" to embed assets into binary")
 		}
 
@@ -56,7 +56,7 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 		log.Printf("assets dir created: %s", assets)
 		app.assets = assets
 
-		tarBuffer := bytes.NewReader(assetsTarBytes)
+		tarBuffer := bytes.NewReader(assetsTarBytes())
 		tarReader := tar.NewReader(tarBuffer)
 
 		//extract

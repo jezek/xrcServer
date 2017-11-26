@@ -85,12 +85,12 @@ func main() {
 
 	cleanUpAssets, err := app.parseAssets(assets)
 	if err != nil {
-		log.Printf("Error parsing assets: %v", err)
+		log.Fatalf("Error parsing assets: %v", err)
 	}
 	defer cleanUpAssets()
 
-	fmt.Scanf("press a key")
-	return
+	//fmt.Scanf("press a key")
+	//return
 
 	if strings.HasPrefix(app.config, "~") {
 		user, err := user.Current()
