@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-//go:generate go run generate/dir2goTar.go -f assetsTarBytes ./assets
+//go:generate go run embeed/dir2goTar.go -v assetsTarBytes ./assets
 
 //sets application assets directory to assetsDir and parses templates.
 //if assetsDir is empty, then a tmporary directory is created and used as application assets directory.
@@ -40,8 +40,8 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 	}
 
 	if assetsDir == "" {
-		if len(assetsTarBytes()) == 0 {
-			return noCleanUpFunction, fmt.Errorf("no assets tar bytes. use \"go generate\" to embed assets into binary")
+		if len(assetsTarBytes) == 0 {
+			return noCleanUpFunction, fmt.Errorf("no assets tar bytes. use \"go generate\" to embed assets into binary, or run xrcServer with -asets flag")
 		}
 
 		//create
@@ -50,13 +50,13 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 			return noCleanUpFunction, err
 		}
 		localCleanUp = func() {
-			log.Printf("cleaning up my mess in: %s", assets)
+			log.Printf("cleaning up temporary assets directory")
 			os.RemoveAll(assets)
 		}
-		log.Printf("assets dir created: %s", assets)
+		log.Printf("temporary assets directory created: %s", assets)
 		app.assets = assets
 
-		tarBuffer := bytes.NewReader(assetsTarBytes())
+		tarBuffer := bytes.NewReader(assetsTarBytes)
 		tarReader := tar.NewReader(tarBuffer)
 
 		//extract

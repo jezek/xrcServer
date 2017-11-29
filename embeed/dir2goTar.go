@@ -16,123 +16,27 @@ import (
 	"time"
 )
 
-type coder interface {
-	encode(src io.Reader, dst io.Writer) (nSrc, nDst int, err error)
-	decodeFuncString(variableName string) string
+type encoder interface {
+	encode(src []byte) string
 }
 
-type nestedError struct {
-	error
-	parent error
+type rawBytesHexEncoder struct{}
+
+func (c rawBytesHexEncoder) encode(src []byte) string {
+	return fmt.Sprintf("%#v", src)
 }
 
-func (e nestedError) Error() string {
-	return fmt.Sprintf("%s, %s", e.parent.Error(), e.error.Error())
-}
-
-type bytesDecCoder struct {
-	bufferLen int
-}
-
-func (c bytesDecCoder) decodeFuncString(variableName string) string {
-	return "//bytesDec coder\nreturn " + variableName
-}
-
-func (c bytesDecCoder) encode(src io.Reader, dst io.Writer) (nSrc, nDst int, err error) {
-
-	header, footer := "[]byte {", "}"
-	nr, nw := 0, 0
-
-	nw, err = dst.Write([]byte(header))
-	nDst += nw
-	if err != nil {
-		return
-	}
-	defer func() {
-		var e error
-		nw, e = dst.Write([]byte(footer))
-		nDst += nw
-		if e != nil {
-			if err == nil {
-				err = e
-			} else {
-				err = nestedError{e, err}
-			}
-		}
-	}()
-
-	if c.bufferLen == 0 {
-		c.bufferLen = 1024
-	}
-	b := make([]byte, c.bufferLen)
-	for {
-		b = b[:cap(b)]
-		nr, err = src.Read(b)
-		nSrc += nr
-		b := b[:nr]
-		if err != nil {
-			if err == io.EOF {
-				err = nil
-				if len(b) > 0 {
-					s := ""
-					sep := ","
-					for i, bv := range b {
-						if i == len(b)-1 {
-							sep = ""
-						}
-						s += fmt.Sprintf("%d%s", bv, sep)
-					}
-					nw, err = dst.Write([]byte(s))
-					nDst += nw
-				}
-			} else {
-				if len(b) > 0 {
-					var e error
-					s := ""
-					sep := ","
-					for i, bv := range b {
-						if i == len(b)-1 {
-							sep = ""
-						}
-						s += fmt.Sprintf("%d%s", bv, sep)
-					}
-					nw, e = dst.Write([]byte(s))
-					nDst += nw
-					if e != nil {
-						err = nestedError{e, err}
-					}
-				}
-			}
-			return
-		} else {
-			if len(b) > 0 {
-				s := ""
-				for _, bv := range b {
-					s += fmt.Sprintf("%d,", bv)
-				}
-				nw, err = dst.Write([]byte(s))
-				nDst += nw
-				if err != nil {
-					return
-				}
-			}
-		}
-	}
-}
-
-var coders map[string]coder = map[string]coder{
-	"bytesDec": bytesDecCoder{},
+var coders map[string]encoder = map[string]encoder{
+	"rawBytesHex": rawBytesHexEncoder{},
 }
 
 func main() {
 	packageName := ""
 	variableName := ""
 	variableEncoding := ""
-	funcName := ""
 	flag.StringVar(&packageName, "p", "main", "`pagkage` name in generated file")
 	flag.StringVar(&variableName, "v", "tarBytes", "variable name in generated file")
-	flag.StringVar(&variableEncoding, "e", "bytesDec", "variable encoding")
-	flag.StringVar(&funcName, "f", "TarBytes", "function name in generated file")
+	flag.StringVar(&variableEncoding, "e", "rawBytesHex", "variable encoding")
 	flag.Parse()
 
 	coder := coders[variableEncoding]
@@ -188,12 +92,7 @@ func main() {
 	//}()
 	Tar(dirAbs, tarBuffer, tarFile)
 
-	dataEncodedBuffer := &bytes.Buffer{}
-	if r, w, err := coder.encode(tarBuffer, dataEncodedBuffer); err != nil {
-		log.Fatalf("data encoding error: %v (read: %d, write: %d)", err.Error(), r, w)
-	} else {
-		log.Printf("data encoded. read: %d, write:%d", r, w)
-	}
+	encoded := coder.encode(tarBuffer.Bytes())
 
 	//wg.Wait()
 
@@ -201,12 +100,10 @@ func main() {
 	if err := tpl.Execute(buf, map[string]interface{}{
 		"packageName":  packageName,
 		"variableName": variableName,
-		"funcName":     funcName,
-		"funcBody":     coder.decodeFuncString(variableName),
 		"arguments":    os.Args[1:],
 		"time":         time.Now(),
 		"workingDir":   dirAbs,
-		"dataString":   string(dataEncodedBuffer.Bytes()),
+		"dataString":   encoded,
 	}); err != nil {
 		log.Fatalf("template execute error: %v", err)
 	}
@@ -291,9 +188,4 @@ package {{.packageName}}
 //by dir2goTar on {{.time}}
 //in {{.workingDir}} using arguments: {{.arguments}}
 
-var {{.variableName}} = {{.dataString}}
-
-func {{.funcName}}() []byte {
-	{{.funcBody}}
-}
-`
+var {{.variableName}} = {{.dataString}}`
