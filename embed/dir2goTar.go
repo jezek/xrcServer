@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"bytes"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"go/format"
@@ -16,19 +17,27 @@ import (
 	"time"
 )
 
-type encoder func(src []byte) string
+type encoder func(src []byte) ([]string, string)
 
-func rawBytesHexEncode(src []byte) string {
-	return fmt.Sprintf("%#v", src)
+func rawBytesHexEncode(src []byte) ([]string, string) {
+	return nil, fmt.Sprintf("%#v", src)
 }
 
-func rawBytesDecEncode(src []byte) string {
-	return "[]byte{" + strings.Join(strings.Split(strings.Trim(fmt.Sprintf("%v", src), "[]"), " "), ",") + "}"
+func rawBytesDecEncode(src []byte) ([]string, string) {
+	return nil, "[]byte{" + strings.Join(strings.Split(strings.Trim(fmt.Sprintf("%v", src), "[]"), " "), ",") + "}"
+}
+
+func base16Encode(src []byte) ([]string, string) {
+	return []string{"encoding/hex"}, `func() []byte {
+		b, _ := hex.DecodeString("` + hex.EncodeToString(src) + `")
+		return b
+	}()`
 }
 
 var coders map[string]encoder = map[string]encoder{
 	"rawBytesHex": rawBytesHexEncode,
 	"rawBytesDec": rawBytesDecEncode,
+	"base16":      base16Encode,
 }
 
 func main() {
@@ -73,7 +82,7 @@ func main() {
 	}
 
 	file := fileBase + ".tar.go"
-	log.Printf("packing %s into %s as %s package to %s variable", dir, file, packageName, variableName)
+	log.Printf("packing %s into %s as %s package to %s variable using %s encoding", dir, file, packageName, variableName, variableEncoding)
 
 	tpl, err := template.New("goTar").Parse(goTarTemplate)
 	if err != nil {
@@ -95,7 +104,7 @@ func main() {
 
 	Tar(dirAbs, outBuffers...)
 
-	encoded := encodeFunc(tarBuffer.Bytes())
+	imports, encoded := encodeFunc(tarBuffer.Bytes())
 
 	//if debug {
 	//	log.Printf("encoded: %s", encoded)
@@ -104,6 +113,7 @@ func main() {
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, map[string]interface{}{
 		"packageName":  packageName,
+		"imports":      imports,
 		"variableName": variableName,
 		"arguments":    os.Args[1:],
 		"time":         time.Now(),
@@ -192,6 +202,14 @@ func Tar(src string, writers ...io.Writer) error {
 
 const goTarTemplate = `
 package {{.packageName}}
+
+{{if .imports}}
+import (
+	{{range .imports}}
+	"{{.}}"
+	{{end}}
+)
+{{end}}
 
 //this file was generated
 //by dir2goTar on {{.time}}
