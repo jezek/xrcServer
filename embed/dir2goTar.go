@@ -22,17 +22,24 @@ func rawBytesHexEncode(src []byte) string {
 	return fmt.Sprintf("%#v", src)
 }
 
+func rawBytesDecEncode(src []byte) string {
+	return "[]byte{" + strings.Join(strings.Split(strings.Trim(fmt.Sprintf("%v", src), "[]"), " "), ",") + "}"
+}
+
 var coders map[string]encoder = map[string]encoder{
 	"rawBytesHex": rawBytesHexEncode,
+	"rawBytesDec": rawBytesDecEncode,
 }
 
 func main() {
 	packageName := ""
 	variableName := ""
 	variableEncoding := ""
+	debug := false
 	flag.StringVar(&packageName, "p", "main", "`pagkage` name in generated file")
 	flag.StringVar(&variableName, "v", "tarBytes", "variable name in generated file")
 	flag.StringVar(&variableEncoding, "e", "rawBytesHex", "variable encoding")
+	flag.BoolVar(&debug, "debug", false, "debug mode. Result will be writen to stdout instead of file")
 	flag.Parse()
 
 	encodeFunc := coders[variableEncoding]
@@ -74,23 +81,25 @@ func main() {
 	}
 
 	tarBuffer := &bytes.Buffer{}
-	tarFile, err := os.Create(fileBase + ".tar")
-	if err != nil {
-		log.Fatalf("tar file create error: %v", err)
-	}
-	defer tarFile.Close()
+	outBuffers := []io.Writer{tarBuffer}
 
-	//wg := &sync.WaitGroup{}
-	//wg.Add(1)
-	//go func() {
-	//	Tar(dirAbs, tarBuffer, tarFile)
-	//	wg.Done()
-	//}()
-	Tar(dirAbs, tarBuffer, tarFile)
+	if !debug {
+		tarFile, err := os.Create(fileBase + ".tar")
+		if err != nil {
+			log.Printf("tar file create error: %v", err)
+		} else {
+			defer tarFile.Close()
+			outBuffers = append(outBuffers, tarFile)
+		}
+	}
+
+	Tar(dirAbs, outBuffers...)
 
 	encoded := encodeFunc(tarBuffer.Bytes())
 
-	//wg.Wait()
+	//if debug {
+	//	log.Printf("encoded: %s", encoded)
+	//}
 
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, map[string]interface{}{
@@ -109,10 +118,14 @@ func main() {
 		log.Fatalf("resulting template formating error: %v", err)
 	}
 
-	if err := ioutil.WriteFile(file, fileContent, 0644); err != nil {
-		log.Fatalf("file write error: %v", err)
+	if debug == false {
+		if err := ioutil.WriteFile(file, fileContent, 0644); err != nil {
+			log.Fatalf("file write error: %v", err)
+		}
+		log.Printf("file succesfully generated")
+	} else {
+		fmt.Print(string(fileContent))
 	}
-	log.Printf("file succesfully generated")
 
 }
 
