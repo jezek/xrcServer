@@ -16,18 +16,14 @@ import (
 	"time"
 )
 
-type encoder interface {
-	encode(src []byte) string
-}
+type encoder func(src []byte) string
 
-type rawBytesHexEncoder struct{}
-
-func (c rawBytesHexEncoder) encode(src []byte) string {
+func rawBytesHexEncode(src []byte) string {
 	return fmt.Sprintf("%#v", src)
 }
 
 var coders map[string]encoder = map[string]encoder{
-	"rawBytesHex": rawBytesHexEncoder{},
+	"rawBytesHex": rawBytesHexEncode,
 }
 
 func main() {
@@ -39,8 +35,8 @@ func main() {
 	flag.StringVar(&variableEncoding, "e", "rawBytesHex", "variable encoding")
 	flag.Parse()
 
-	coder := coders[variableEncoding]
-	if coder == nil {
+	encodeFunc := coders[variableEncoding]
+	if encodeFunc == nil {
 		log.Fatalf("unknown encoding: %s", variableEncoding)
 	}
 
@@ -92,7 +88,7 @@ func main() {
 	//}()
 	Tar(dirAbs, tarBuffer, tarFile)
 
-	encoded := coder.encode(tarBuffer.Bytes())
+	encoded := encodeFunc(tarBuffer.Bytes())
 
 	//wg.Wait()
 

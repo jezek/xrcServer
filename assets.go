@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-//go:generate go run embeed/dir2goTar.go -v assetsTarBytes ./assets
+//go:generate go run embed/dir2goTar.go -v assetsTarBytes ./assets
 
 //sets application assets directory to assetsDir and parses templates.
 //if assetsDir is empty, then a tmporary directory is created and used as application assets directory.
