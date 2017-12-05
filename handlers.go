@@ -46,7 +46,7 @@ func (app *application) newAuthSecureCookie() (string, *securecookie.SecureCooki
 	}
 	//TODO? user password via securecookie block encryption
 	sCookie := securecookie.New(priv, nil)
-	sCookie.MaxAge(int(app.authCookeieDuration.Seconds()))
+	sCookie.MaxAge(int(app.pair.cookieDuration.Seconds()))
 	return cookieName, sCookie, nil
 }
 
@@ -64,7 +64,8 @@ func (app *application) newPairSecureCookie() (string, *securecookie.SecureCooki
 	}
 	privHash := sha256.Sum256(priv)
 	sCookie := securecookie.New(priv, privHash[:])
-	sCookie.MaxAge(int(app.authPassDuration.Seconds()))
+	//TODO? func with locks
+	sCookie.MaxAge(int(app.pair.passwordDuration.Seconds()))
 	return cookieName, sCookie, nil
 }
 
@@ -159,7 +160,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		//log.Printf("pairHandler: don't have auth cookie: %s", err.Error())
 	}
 
-	if app.authPassLen > 0 {
+	if app.pair.passwordLen > 0 {
 		passphraseUrl := r.URL.Path
 		pc, err := r.Cookie(pscn)
 
@@ -168,61 +169,69 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		//First half is printed to server stdout
 		//Second half goes to client via cookie
 		generateOrProlongPassword := func() error {
-			if err := app.authNewPassword(); err != nil {
+			expire, passwordBytes, err := app.pair.newPassword()
+			if err != nil {
 				return err
 			}
-			passphrase := hex.EncodeToString(app.authPassBytes)
-			//log.Printf("pairHandler: passphrase generated: %s", passphrase)
-			passphraseServer := passphrase[:len(passphrase)/2]
-			passphraseClient := passphrase[len(passphrase)/2:]
 
-			//set pair cookie
-			encoded, err := psc.Encode(pscn, passphraseClient)
-			if err != nil {
-				return fmt.Errorf("generateOrProlongPassword: pair cookie encoding error: %s", err.Error())
-			}
-			pc = &http.Cookie{
-				Name:    pscn,
-				Value:   encoded,
-				Expires: time.Now().Add(app.authPassDuration),
-				Path:    "/pair/",
-			}
-			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
-			http.SetCookie(w, pc)
-			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
-			passphraseServerHumanReadable := insertEveryN(" ", passphraseServer, 4)
-			//show passphrase
-			fmt.Println(strings.Repeat("*", 30))
-			fmt.Println("Passphrase:", passphraseServerHumanReadable)
-			fmt.Println(strings.Repeat("*", 30))
+			if expire != nil {
+				log.Printf("generateOrProlongPassword: new password generated")
+				//do all stuff with password
+				passphrase := hex.EncodeToString(passwordBytes)
+				//log.Printf("pairHandler: passphrase generated: %s", passphrase)
+				passphraseServer := passphrase[:len(passphrase)/2]
+				passphraseClient := passphrase[len(passphrase)/2:]
 
-			//store passphrase to tmp file
-			if err := app.pairPassphraseToFile([]byte(passphraseServerHumanReadable), "passphrase.txt"); err != nil {
-				log.Printf("generateOrProlongPassword: can't create tmp text file: %v", err)
-			}
-
-			ip, err := externalIP()
-			if err != nil {
-				log.Printf("generateOrProlongPassword: obtaining external ip address error: %v", err)
-			} else {
-				//create passphrase url for LAN
-				protocol := "http"
-				if app.noTLS == false {
-					protocol += "s"
+				//set pair cookie
+				encoded, err := psc.Encode(pscn, passphraseClient)
+				if err != nil {
+					return fmt.Errorf("generateOrProlongPassword: pair cookie encoding error: %s", err.Error())
 				}
-				passphraseServerURL := protocol + "://" + ip.String() + ":" + app.port + "/pair/" + passphraseServer
+				pc = &http.Cookie{
+					Name:    pscn,
+					Value:   encoded,
+					Expires: time.Now().Add(app.pair.passwordDuration),
+					Path:    "/pair/",
+				}
+				//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
+				http.SetCookie(w, pc)
+				//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
+				passphraseServerHumanReadable := insertEveryN(" ", passphraseServer, 4)
+				//show passphrase
+				fmt.Println(strings.Repeat("*", 30))
+				fmt.Println("Passphrase:", passphraseServerHumanReadable)
+				fmt.Println(strings.Repeat("*", 30))
 
-				//store passphrase url to tmp file
-				if err := app.pairPassphraseToFile([]byte(passphraseServerURL), "passphrase.url"); err != nil {
-					log.Printf("generateOrProlongPassword: can't create tmp url file: %v", err)
+				fileWithPathPrefix := filepath.Join(os.TempDir(), "xrcServer."+app.port+".")
+
+				//store passphrase to tmp file
+				if err := app.pair.expirableFile([]byte(passphraseServerHumanReadable), fileWithPathPrefix+"passphrase.txt", expire); err != nil {
+					log.Printf("generateOrProlongPassword: can't create tmp text file: %v", err)
 				}
 
-				//create and store passphrase url as qr code in png file
-				if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
-					log.Printf("generateOrProlongPassword: qr code encoding error: %v", err)
+				ip, err := externalIP()
+				if err != nil {
+					log.Printf("generateOrProlongPassword: obtaining external ip address error: %v", err)
 				} else {
-					if err := app.pairPassphraseToFile(png, "passphrase.png"); err != nil {
-						log.Printf("generateOrProlongPassword: qr code saving error: %v", err)
+					//create passphrase url for LAN
+					protocol := "http"
+					if app.noTLS == false {
+						protocol += "s"
+					}
+					passphraseServerURL := protocol + "://" + ip.String() + ":" + app.port + "/pair/" + passphraseServer
+
+					//store passphrase url to tmp file
+					if err := app.pair.expirableFile([]byte(passphraseServerURL), fileWithPathPrefix+"passphrase.url", expire); err != nil {
+						log.Printf("generateOrProlongPassword: can't create tmp url file: %v", err)
+					}
+
+					//create and store passphrase url as qr code in png file
+					if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
+						log.Printf("generateOrProlongPassword: qr code encoding error: %v", err)
+					} else {
+						if err := app.pair.expirableFile(png, fileWithPathPrefix+"passphrase.png", expire); err != nil {
+							log.Printf("generateOrProlongPassword: qr code saving error: %v", err)
+						}
 					}
 				}
 			}
@@ -303,12 +312,12 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		password, err := hex.DecodeString(passphrase + pcp)
 		if err != nil {
 			log.Printf("pairHandler: decoding passphrase error: %s", err.Error())
-			app.authClearPassword()
+			app.pair.clearPassword()
 		} else {
 			//log.Printf("pairHandler: got password from passphrase")
 		}
 
-		if err != nil || !app.auth(password) {
+		if err != nil || !app.pair.authorize(password) {
 			log.Print("pairHandler: wrong passphrase")
 			//delete pair cookie
 			pc = &http.Cookie{
@@ -357,7 +366,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	ac = &http.Cookie{
 		Name:    ascn,
 		Value:   encoded,
-		Expires: time.Now().Add(app.authCookeieDuration),
+		Expires: time.Now().Add(app.pair.cookieDuration),
 		Path:    "/",
 	}
 	http.SetCookie(w, ac)
@@ -521,7 +530,6 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 					log.Printf("websocket.Handler: key: no text, or not string: %v", m.Data["text"])
 					break
 				}
-				//TODO sending alt+tab results in s+ a+ t+ t- a-
 
 				if err := app.display.DefaultScreen().Window().Keyboard().Control().Write(text); err != nil {
 					//log.Printf("websocket.Handler: key: x keyboard write error: %v", err)
@@ -593,7 +601,7 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 						"cookie": map[string]interface{}{
 							"name":    cookieName,
 							"value":   encoded,
-							"expires": time.Now().Add(app.authCookeieDuration).Format("Mon, 2 Jan 2006 15:04:05 MST"),
+							"expires": time.Now().Add(app.pair.cookieDuration).Format("Mon, 2 Jan 2006 15:04:05 MST"),
 							"path":    "/",
 						},
 					},
@@ -611,7 +619,6 @@ func (app *application) websocketHandler(w http.ResponseWriter, r *http.Request)
 				send <- msgBytes
 				//log.Printf("websocket.Handler: cookieConfig: returned config: %s", string(msg.Data["config"].([]byte)))
 
-				//TODO if mate-settings-daemon detected, give an option to restart it
 			default:
 				log.Printf("websocket.Handler: unknown type: %s", m.Type)
 			}
@@ -683,20 +690,4 @@ func externalIP() (net.IP, error) {
 		}
 	}
 	return nil, errors.New("externalIP: are you connected to the network?")
-}
-
-func (app *application) pairPassphraseToFile(what []byte, where string) error {
-	fileName := filepath.Join(os.TempDir(), "xrcServer."+app.port+"."+where)
-	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0660)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if _, err := file.Write(what); err != nil {
-		return err
-	}
-	//TODO? remove tmp file after expire
-	log.Printf("saved passphrase to: %s", fileName)
-	return nil
 }

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -22,7 +20,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 	"xgo"
@@ -39,12 +36,7 @@ type application struct {
 	noTLS                bool
 	clientDebug          bool
 
-	authMx              *sync.Mutex
-	authPassLen         int
-	authPassBytes       []byte
-	authPassExpire      time.Time
-	authPassDuration    time.Duration
-	authCookeieDuration time.Duration
+	pair *pair
 
 	//cache
 	privateKeyCached []byte
@@ -67,9 +59,10 @@ func main() {
 	defer log.Printf("bye")
 
 	app := application{
-		authMx:              &sync.Mutex{},
-		authPassDuration:    5 * time.Minute,
-		authCookeieDuration: 365 * 24 * time.Hour,
+		pair: &pair{
+			passwordDuration: 60 * time.Second,
+			cookieDuration:   365 * 24 * time.Hour,
+		},
 	}
 
 	//Flags
@@ -77,7 +70,7 @@ func main() {
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
 	flag.BoolVar(&app.clientDebug, "debug-client", false, "show debuging info in served client app")
-	flag.IntVar(&app.authPassLen, "password", 8, "`length` of generated authentication password string. 0 means no password.")
+	flag.IntVar(&app.pair.passwordLen, "password", 8, "`length` of generated authentication password string. 0 means no password.")
 
 	assets := ""
 	flag.StringVar(&assets, "assets", "", "`path` to assets directory for http serving. embeded assets are used if empty")
@@ -176,6 +169,9 @@ func main() {
 			}
 		}
 	}
+	log.Printf("application stopped")
+
+	app.pair.clearPassword()
 }
 
 func interrupt(cancel <-chan struct{}) {
@@ -344,65 +340,4 @@ func (app *application) publicKey() ([]byte, error) {
 	}
 
 	return app.publicKeyCached, nil
-}
-
-func (app *application) authNewPassword() error {
-	app.authMx.Lock()
-	defer app.authMx.Unlock()
-
-	if app.authPassLen <= 0 {
-		app.authPassBytes = []byte{}
-		return nil
-	}
-
-	//expired
-	if app.authPassBytes != nil && app.authPassExpire.Before(time.Now()) {
-		app.authPassBytes = nil
-		//log.Print("authNewPassword: expired")
-	}
-
-	if app.authPassBytes == nil {
-		app.authPassBytes = make([]byte, app.authPassLen)
-		_, err := rand.Read(app.authPassBytes)
-		if err != nil {
-			app.authPassBytes = nil
-			return err
-		}
-		//log.Print("authNewPassword: new created")
-	} else {
-		//log.Print("authNewPassword: prolonged")
-	}
-
-	app.authPassExpire = time.Now().Add(app.authPassDuration)
-	return nil
-}
-
-func (app *application) authClearPassword() {
-	app.authMx.Lock()
-	defer app.authMx.Unlock()
-
-	app.authPassBytes = nil
-	//log.Print("authClearPassword: cleared")
-}
-
-func (app *application) auth(b []byte) bool {
-	defer app.authClearPassword()
-
-	app.authMx.Lock()
-	defer app.authMx.Unlock()
-
-	if app.authPassLen <= 0 {
-		return true
-	}
-
-	if app.authPassBytes == nil {
-		return false
-	}
-
-	if app.authPassExpire.Before(time.Now()) {
-		//expired
-		return false
-	}
-
-	return bytes.Equal(app.authPassBytes, b)
 }
