@@ -161,7 +161,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.pair.passwordLen > 0 {
-		passphraseUrl := r.URL.Path
+		passphraseURL := r.URL.Path
 		pc, err := r.Cookie(pscn)
 
 		//Generates or prolong existing password.
@@ -242,7 +242,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			//no pair cookie in requet (or some other error)
 			//log.Printf("pairHandler: no request pair cookie: %s", err.Error())
-			if passphraseUrl != "" {
+			if passphraseURL != "" {
 				log.Print("pairHandler: url not empty")
 				http.Redirect(w, r, "/pair/", http.StatusTemporaryRedirect)
 				return
@@ -287,7 +287,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//log.Printf("pairHandler: request pair cookie decoded, got pair cookie passphrase: %s", pcp)
-		if passphraseUrl == "" {
+		if passphraseURL == "" {
 			log.Printf("pairHandler: url passphrase missing")
 
 			if err := generateOrProlongPassword(); err != nil {
@@ -306,7 +306,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		passphrase := stripWhiteSpaces(passphraseUrl)
+		passphrase := stripWhiteSpaces(passphraseURL)
 		//log.Printf("pairHandler: got url passphrase: %s", passphrase)
 		//log.Printf("pairHandler: got combined passphrase: %s", passphrase+pcp)
 		password, err := hex.DecodeString(passphrase + pcp)

@@ -201,7 +201,7 @@ type runStopErr struct {
 	error
 }
 
-func (_ runStopErr) runStopError() {}
+func (runStopErr) runStopError() {}
 
 //runs all runners .run function concurently and waits for first to terminate.
 //then closes left runners with .stop function and waits for all to finish.
