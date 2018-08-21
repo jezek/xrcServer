@@ -240,7 +240,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err != nil {
-			//no pair cookie in requet (or some other error)
+			// no pair cookie in requet (or some other error)
 			//log.Printf("pairHandler: no request pair cookie: %s", err.Error())
 			if passphraseURL != "" {
 				log.Print("pairHandler: url not empty")
@@ -248,13 +248,25 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// if application pairing is locked return forbidden error, so we wil not generate pair cookie or password
+			app.pair.mx.Lock()
+			if !app.pair.pairOpened {
+				log.Printf("pairHandler: appliation is locked for pairing")
+				http.Error(w, "Pairing is locked", http.StatusForbidden)
+
+				app.pair.mx.Unlock()
+				return
+			}
+			app.pair.mx.Unlock()
+
+			// horay, the application is unlocked for pairing, so generate password and pair cookie
 			if err := generateOrProlongPassword(); err != nil {
 				log.Printf("pairHandler: password generate or prolong error: %s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			//show pair form
+			// show pair form
 			if err := app.pairTemplate.Execute(w, struct{}{}); err != nil {
 				log.Printf("pairHandler: pairTemplate execute error: %s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -264,7 +276,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//got pair cookie, try decode it
+		// got pair cookie, try decode it
 		//log.Printf("pairHandler: got pair cookie")
 		pcp := ""
 		if err := psc.Decode(pscn, pc.Value, &pcp); err != nil {
@@ -290,6 +302,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		if passphraseURL == "" {
 			log.Printf("pairHandler: url passphrase missing")
 
+			//TODO not updating pair cookie expire time... why???
 			if err := generateOrProlongPassword(); err != nil {
 				log.Printf("pairHandler: password generate or prolong error: %s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)

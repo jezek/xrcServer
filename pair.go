@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
 type pair struct {
 	mx               sync.Mutex
+	pairOpened       bool
+	pairOpenDuration time.Duration
 	passwordLen      int
 	passwordDuration time.Duration
 	cookieDuration   time.Duration
@@ -201,4 +205,36 @@ func (p pairPassword) expire(control <-chan interface{}, d time.Duration) <-chan
 		}
 	}()
 	return done
+}
+
+func (p *pair) UnlockHandle(cancel <-chan struct{}) {
+	log.Print("To unlock app for pairing, send SIGUSR1")
+
+	unlock := make(chan os.Signal, 1)
+	signal.Notify(unlock, syscall.SIGUSR1)
+	defer signal.Stop(unlock)
+
+	lock := (<-chan time.Time)(nil)
+	for unlock != nil {
+		select {
+		case <-unlock:
+			p.mx.Lock()
+			if p.pairOpened == false {
+				log.Printf("Unlocking application for pairing for %v", p.pairOpenDuration)
+				p.pairOpened = true
+				lock = time.After(p.pairOpenDuration)
+			} else {
+				log.Printf("Pairing allready unlocked")
+			}
+			p.mx.Unlock()
+		case <-lock:
+			p.mx.Lock()
+			log.Printf("Locking application for pairing")
+			p.pairOpened = false
+			lock = nil
+			p.mx.Unlock()
+		case <-cancel:
+			unlock = nil
+		}
+	}
 }

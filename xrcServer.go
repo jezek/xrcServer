@@ -60,6 +60,7 @@ func main() {
 
 	app := application{
 		pair: &pair{
+			pairOpenDuration: 20 * time.Second,
 			passwordDuration: 60 * time.Second,
 			cookieDuration:   365 * 24 * time.Hour,
 		},
@@ -113,7 +114,8 @@ func main() {
 	}
 	log.Printf("xrcServer listens on port :%s", app.port)
 
-	interruptCancel := make(chan struct{})
+	interruptHandlerCancel := make(chan struct{})
+	appPairUnlockHandlerCancel := make(chan struct{})
 
 	if errors := run(
 		runner{
@@ -152,13 +154,23 @@ func main() {
 				return nl.Close()
 			},
 		},
-		runner{
+		runner{ // handle SIGTERM & SIGINT
 			func() error {
-				interrupt(interruptCancel)
+				interruptHandler(interruptHandlerCancel)
 				return nil
 			},
 			func() error {
-				close(interruptCancel)
+				close(interruptHandlerCancel)
+				return nil
+			},
+		},
+		runner{ // handle SIGUSR1 as application pairing unlock
+			func() error {
+				app.pair.UnlockHandle(appPairUnlockHandlerCancel)
+				return nil
+			},
+			func() error {
+				close(appPairUnlockHandlerCancel)
 				return nil
 			},
 		},
@@ -174,7 +186,7 @@ func main() {
 	app.pair.clearPassword()
 }
 
-func interrupt(cancel <-chan struct{}) {
+func interruptHandler(cancel <-chan struct{}) {
 	log.Print("Press Ctrl-c to quit")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)

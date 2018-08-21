@@ -41,7 +41,7 @@ func (app *application) parseAssets(assetsDir string) (func(), error) {
 
 	if assetsDir == "" {
 		if len(assetsTarBytes) == 0 {
-			return noCleanUpFunction, fmt.Errorf("no assets tar bytes. use \"go generate\" to embed assets into binary, or run xrcServer with -asets flag")
+			return noCleanUpFunction, fmt.Errorf("no assets tar bytes. use \"go generate\" to embed assets into binary, or run xrcServer with -assets flag")
 		}
 
 		//create
