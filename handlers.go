@@ -114,6 +114,7 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 	})
 }
 
+//TODO simplify pairing
 func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("pairHandler")
 	defer log.Printf("pairHandler end")
@@ -170,38 +171,32 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		//Second half goes to client via cookie
 		generateOrProlongPassword := func() error {
 			expire, passwordBytes, err := app.pair.newPassword()
+			expirationTime := time.Now().Add(app.pair.passwordDuration)
+			//TODO make app.pair.newPassword() return expiration time (in channel)
 			if err != nil {
 				return err
 			}
 
+			// encode and split password bytes
+			passphrase := hex.EncodeToString(passwordBytes)
+			passphraseServer := passphrase[:len(passphrase)/2]
+			passphraseClient := passphrase[len(passphrase)/2:]
+			//log.Printf("pairHandler: passphrase generated: %s", passphrase)
+
+			// encode client passphrase to secure cookie
+			// this needs to be all the time, cause duration is encoded in there too
+			encoded, err := psc.Encode(pscn, passphraseClient)
+			if err != nil {
+				return fmt.Errorf("generateOrProlongPassword: pair cookie encoding error: %s", err.Error())
+			}
+
+			// encode server side passphrase to human readable form
+			passphraseServerHumanReadable := insertEveryN(" ", passphraseServer, 4)
+
 			if expire != nil {
 				log.Printf("generateOrProlongPassword: new password generated")
+
 				//do all stuff with password
-				passphrase := hex.EncodeToString(passwordBytes)
-				//log.Printf("pairHandler: passphrase generated: %s", passphrase)
-				passphraseServer := passphrase[:len(passphrase)/2]
-				passphraseClient := passphrase[len(passphrase)/2:]
-
-				//set pair cookie
-				encoded, err := psc.Encode(pscn, passphraseClient)
-				if err != nil {
-					return fmt.Errorf("generateOrProlongPassword: pair cookie encoding error: %s", err.Error())
-				}
-				pc = &http.Cookie{
-					Name:    pscn,
-					Value:   encoded,
-					Expires: time.Now().Add(app.pair.passwordDuration),
-					Path:    "/pair/",
-				}
-				//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
-				http.SetCookie(w, pc)
-				//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
-				passphraseServerHumanReadable := insertEveryN(" ", passphraseServer, 4)
-				//show passphrase
-				fmt.Println(strings.Repeat("*", 30))
-				fmt.Println("Passphrase:", passphraseServerHumanReadable)
-				fmt.Println(strings.Repeat("*", 30))
-
 				fileWithPathPrefix := filepath.Join(os.TempDir(), "xrcServer."+app.port+".")
 
 				//store passphrase to tmp file
@@ -234,7 +229,25 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				}
+			} else {
+				log.Printf("generateOrProlongPassword: password expiration prolonged for %v", app.pair.passwordDuration)
 			}
+
+			//set pair cookie
+			pc = &http.Cookie{
+				Name:    pscn,
+				Value:   encoded,
+				Expires: expirationTime,
+				Path:    "/pair/",
+			}
+			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie: %#v", pc)
+			http.SetCookie(w, pc)
+			//log.Printf("pairHandler: generateOrProlongPassword: pair cookie sent")
+
+			// show human readable passphrase to stdout
+			fmt.Println(strings.Repeat("*", 30))
+			fmt.Println("Passphrase:", passphraseServerHumanReadable)
+			fmt.Println(strings.Repeat("*", 30))
 
 			return nil
 		}
@@ -302,7 +315,6 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		if passphraseURL == "" {
 			log.Printf("pairHandler: url passphrase missing")
 
-			//TODO not updating pair cookie expire time... why???
 			if err := generateOrProlongPassword(); err != nil {
 				log.Printf("pairHandler: password generate or prolong error: %s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)

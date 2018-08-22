@@ -60,7 +60,7 @@ func main() {
 
 	app := application{
 		pair: &pair{
-			pairOpenDuration: 20 * time.Second,
+			pairOpenDuration: 10 * time.Second,
 			passwordDuration: 60 * time.Second,
 			cookieDuration:   365 * 24 * time.Hour,
 		},

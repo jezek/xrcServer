@@ -32,8 +32,12 @@ func (p *pair) newPassword() (<-chan struct{}, []byte, error) {
 
 	if p.expireControl != nil {
 		//prolong password
-		p.expireControl <- nil
-		return nil, nil, nil
+		passwordChannel := make(chan []byte)
+
+		p.expireControl <- passwordChannel
+		return nil, <-passwordChannel, nil
+		//p.expireControl <- nil
+		//return nil, nil, nil
 	}
 
 	passwordBytes := make([]byte, p.passwordLen)
