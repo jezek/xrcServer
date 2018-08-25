@@ -60,7 +60,6 @@ func main() {
 
 	app := application{
 		pair: &pair{
-			pairOpenDuration: 10 * time.Second,
 			passwordDuration: 60 * time.Second,
 			cookieDuration:   365 * 24 * time.Hour,
 		},
@@ -71,7 +70,7 @@ func main() {
 	flag.StringVar(&app.config, "config", "~/.config/xrcServer", "`path` to configuration directory")
 	flag.BoolVar(&app.noTLS, "notls", false, "do not use TLS encrypted connection (not recomended)")
 	flag.BoolVar(&app.clientDebug, "debug-client", false, "show debuging info in served client app")
-	flag.IntVar(&app.pair.passwordLen, "password", 8, "`length` of generated authentication password string. 0 means no password.")
+	flag.IntVar(&app.pair.passwordLen, "password", 4, "half `length` of generated authentication password string. 0 means no password.")
 
 	assets := ""
 	flag.StringVar(&assets, "assets", "", "`path` to assets directory for http serving. embeded assets are used if empty")

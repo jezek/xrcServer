@@ -3,27 +3,41 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha512"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
 type pair struct {
-	mx               sync.Mutex
-	pairOpened       bool
-	pairOpenDuration time.Duration
 	passwordLen      int
 	passwordDuration time.Duration
 	cookieDuration   time.Duration
-	expireControl    chan<- interface{}
-	expireDone       <-chan struct{}
-	wg               *sync.WaitGroup
+
+	mx            sync.Mutex
+	expireControl chan func() (password []byte, result chan<- bool)
+	expireDone    <-chan struct{}
+	wg            *sync.WaitGroup
 }
 
+func (_ pairPassword) hashPasswordBytes(pbytes []byte) []byte {
+	hash := sha512.New()
+	hash.Write(pbytes)
+	return hash.Sum(nil)
+}
+
+var errPairPasswordAllreadyGenerated error = errors.New("Pair password allready generated")
+
+// Returns read only channel, that closes after password is expired or forced to expire.
+// Also returns the generated password. That is if everything gooes well.
+// If not, the appropiate error is returned and the channel and password bytes are nil
 func (p *pair) newPassword() (<-chan struct{}, []byte, error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
@@ -31,13 +45,8 @@ func (p *pair) newPassword() (<-chan struct{}, []byte, error) {
 	//defer log.Printf("end pair.newPassword()")
 
 	if p.expireControl != nil {
-		//prolong password
-		passwordChannel := make(chan []byte)
-
-		p.expireControl <- passwordChannel
-		return nil, <-passwordChannel, nil
-		//p.expireControl <- nil
-		//return nil, nil, nil
+		// password is allready generated, return error
+		return nil, nil, errPairPasswordAllreadyGenerated
 	}
 
 	passwordBytes := make([]byte, p.passwordLen)
@@ -46,14 +55,17 @@ func (p *pair) newPassword() (<-chan struct{}, []byte, error) {
 			return nil, nil, err
 		}
 	}
+	//TODO use some constructor, to have proper hashing everyvhere
+	password := pairPassword{pairPassword{}.hashPasswordBytes(passwordBytes)}
 
-	password := pairPassword{passwordBytes}
-	control := make(chan interface{})
+	control := make(chan func() ([]byte, chan<- bool))
 	done := password.expire(control, p.passwordDuration)
-
 	p.expireControl = control
-	p.wg = &sync.WaitGroup{}
 
+	// launch gourutine, to wait for password to expire and clean up
+	if p.wg == nil {
+		p.wg = &sync.WaitGroup{}
+	}
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -61,15 +73,19 @@ func (p *pair) newPassword() (<-chan struct{}, []byte, error) {
 		//log.Printf("\tstart pair.newPassword(): go func()")
 		//defer log.Printf("\tend pair.newPassword(): go func()")
 
+		// wait for password expire or be forced to expire
 		for done != nil {
 			if _, ok := <-done; !ok {
 				done = nil
 			}
 		}
 
+		// password expired, no need for p.expireControl
 		p.mx.Lock()
 		defer p.mx.Unlock()
 		p.expireControl = nil
+
+		// also make wg nil, don't worry, about loosing it before wg.Wait() is done, it is handled upon closing expireControl
 		p.wg = nil
 		//log.Printf("\tpair.newPassword(): go func(): pair.expireControl = nil")
 	}()
@@ -89,14 +105,14 @@ func (p *pair) clearPassword() {
 	p.mx.Unlock()
 
 	if wg != nil {
-		//log.Printf("pair.clearPassword(): wait for wg")
-		log.Printf("waiting for expirable pair processes to stop")
+		log.Printf("pair.clearPassword(): waiting for expirable pair processes to stop")
 		wg.Wait()
-		log.Printf("all expirable pair processes stopped")
+		log.Printf("pair.clearPassword(): all expirable pair processes stopped")
 	}
 }
 
 func (p *pair) authorize(b []byte) bool {
+	// right after authorization attempt, clear generated password whatever the result is
 	defer p.clearPassword()
 
 	p.mx.Lock()
@@ -110,13 +126,12 @@ func (p *pair) authorize(b []byte) bool {
 		return false
 	}
 
-	passwordBytes := []byte{}
-	passwordChannel := make(chan []byte)
+	resultChannel := make(chan bool)
 
-	p.expireControl <- passwordChannel
-	passwordBytes = <-passwordChannel
-
-	return bytes.Equal(passwordBytes, b)
+	p.expireControl <- func() ([]byte, chan<- bool) {
+		return b, resultChannel
+	}
+	return <-resultChannel
 }
 
 func (p *pair) expirableFile(what []byte, where string, expire <-chan struct{}) error {
@@ -170,7 +185,7 @@ type pairPassword struct {
 	bytes []byte
 }
 
-func (p pairPassword) expire(control <-chan interface{}, d time.Duration) <-chan struct{} {
+func (p pairPassword) expire(control <-chan func() ([]byte, chan<- bool), d time.Duration) <-chan struct{} {
 	//log.Printf("start pairPassword.expire()")
 	//defer log.Printf("end pairPassword.expire()")
 
@@ -181,31 +196,21 @@ func (p pairPassword) expire(control <-chan interface{}, d time.Duration) <-chan
 		//log.Printf("\tstart pairPassword.expire(): go func()")
 		//defer log.Printf("\tend pairPassword.expire(): go func()")
 
-		for control != nil {
-			//log.Printf("\tpairPassword.expire(): go func(): waiting for timer or control")
-			select {
-			case i, ok := <-control:
-				//log.Printf("\tpairPassword.expire(): go func(): got control")
-				if !ok {
-					//log.Printf("\tpairPassword.expire(): go func(): control closed")
-					log.Printf("pair password forced expire")
-					control = nil
-					break
-				}
-				switch it := i.(type) {
-				case chan []byte:
-					//log.Printf("\tpairPassword.expire(): go func(): requesting password")
-					log.Printf("pair password requested")
-					it <- p.bytes
-				case nil:
-					//log.Printf("\tpairPassword.expire(): go func(): requesting prolong")
-					log.Printf("pair password expiration prolonged")
-				}
-			case <-time.After(d):
-				//log.Printf("\tpairPassword.expire(): go func(): got timer")
-				log.Printf("pair password expired by timer")
-				control = nil
+		//log.Printf("\tpairPassword.expire(): go func(): waiting for timer or control")
+		select {
+		case controlDataFunction, ok := <-control:
+			//log.Printf("\tpairPassword.expire(): go func(): got control")
+			if !ok {
+				//log.Printf("\tpairPassword.expire(): go func(): control closed")
+				log.Printf("Pair password forced to expire")
+				break
 			}
+			passwordBytes, resultChannel := controlDataFunction()
+			resultChannel <- bytes.Equal(p.bytes, p.hashPasswordBytes(passwordBytes))
+			log.Printf("pair password authentification result sent")
+		case <-time.After(d):
+			//log.Printf("\tpairPassword.expire(): go func(): got timer")
+			log.Printf("pair password expired by timer")
 		}
 	}()
 	return done
@@ -222,23 +227,87 @@ func (p *pair) UnlockHandle(cancel <-chan struct{}) {
 	for unlock != nil {
 		select {
 		case <-unlock:
-			p.mx.Lock()
-			if p.pairOpened == false {
-				log.Printf("Unlocking application for pairing for %v", p.pairOpenDuration)
-				p.pairOpened = true
-				lock = time.After(p.pairOpenDuration)
-			} else {
-				log.Printf("Pairing allready unlocked")
+			if err := p.generatePassword(); err != nil {
+				if err == errPairPasswordAllreadyGenerated {
+					log.Printf("Pairing allready unlocked")
+				} else {
+					log.Printf("pair.UnlockHandle: password generate error: %s", err.Error())
+				}
+				break
 			}
-			p.mx.Unlock()
+			log.Printf("Unlocking application for pairing for %v", p.passwordDuration)
+			lock = time.After(p.passwordDuration)
 		case <-lock:
-			p.mx.Lock()
 			log.Printf("Locking application for pairing")
-			p.pairOpened = false
+			p.clearPassword()
 			lock = nil
-			p.mx.Unlock()
 		case <-cancel:
 			unlock = nil
 		}
 	}
+}
+
+//TODO open window with password text and qrcode
+//Generates password.
+//Converts password to hex string and is printed to server stdout
+func (p *pair) generatePassword() error {
+	expire, passwordBytes, err := p.newPassword()
+	if err != nil {
+		return err
+	}
+
+	// encode to string via hex
+	passphrase := hex.EncodeToString(passwordBytes)
+	//log.Printf("pairHandler: passphrase generated: %s", passphrase)
+
+	// encode passphrase to human readable form
+	passphraseServerHumanReadable := insertEveryN(" ", passphrase, 4)
+
+	if expire == nil {
+		return errors.New("generatePassword: password expire channel is nil")
+	}
+
+	log.Printf("generatePassword: new password generated")
+
+	// show human readable passphrase to stdout
+	fmt.Println(strings.Repeat("*", 30))
+	fmt.Println("Passphrase:", passphraseServerHumanReadable)
+	fmt.Println(strings.Repeat("*", 30))
+
+	return nil
+
+	////do all stuff with password
+	//fileWithPathPrefix := filepath.Join(os.TempDir(), "xrcServer."+app.port+".")
+
+	////store passphrase to tmp file
+	//if err := app.pair.expirableFile([]byte(passphraseServerHumanReadable), fileWithPathPrefix+"passphrase.txt", expire); err != nil {
+	//	log.Printf("generatePassword: can't create tmp text file: %v", err)
+	//}
+
+	//ip, err := externalIP()
+	//if err != nil {
+	//	log.Printf("generatePassword: obtaining external ip address error: %v", err)
+	//} else {
+	//	//create passphrase url for LAN
+	//	protocol := "http"
+	//	if app.noTLS == false {
+	//		protocol += "s"
+	//	}
+	//	passphraseServerURL := protocol + "://" + ip.String() + ":" + app.port + "/pair/" + passphraseServer
+
+	//	//store passphrase url to tmp file
+	//	if err := app.pair.expirableFile([]byte(passphraseServerURL), fileWithPathPrefix+"passphrase.url", expire); err != nil {
+	//		log.Printf("generatePassword: can't create tmp url file: %v", err)
+	//	}
+
+	//	//create and store passphrase url as qr code in png file
+	//	if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
+	//		log.Printf("generatePassword: qr code encoding error: %v", err)
+	//	} else {
+	//		if err := app.pair.expirableFile(png, fileWithPathPrefix+"passphrase.png", expire); err != nil {
+	//			log.Printf("generatePassword: qr code saving error: %v", err)
+	//		}
+	//	}
+	//}
+
 }
