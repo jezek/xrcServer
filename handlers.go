@@ -543,3 +543,16 @@ func externalIP() (net.IP, error) {
 	}
 	return nil, errors.New("externalIP: are you connected to the network?")
 }
+
+func (app application) GetBaseUrlLAN() (string, error) {
+	ip, err := externalIP()
+	if err != nil {
+		return "", errors.New("app.GetBaseUrlLAN: obtaining external ip address error: " + err.Error())
+	}
+	//create passphrase url for LAN
+	protocol := "http"
+	if app.noTLS == false {
+		protocol += "s"
+	}
+	return protocol + "://" + ip.String() + ":" + app.port + "/", nil
+}

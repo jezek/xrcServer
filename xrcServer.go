@@ -64,6 +64,9 @@ func main() {
 			cookieDuration:   365 * 24 * time.Hour,
 		},
 	}
+	//TODO do something to get rid of this ugly backreferencing
+	// set pair app for backreference
+	app.pair.app = &app
 
 	//Flags
 	flag.StringVar(&app.port, "port", "10905", "http(s) service `port number`")

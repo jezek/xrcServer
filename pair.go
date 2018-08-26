@@ -17,13 +17,13 @@ import (
 )
 
 type pair struct {
+	app              *application
 	passwordLen      int
 	passwordDuration time.Duration
 	cookieDuration   time.Duration
 
 	mx            sync.Mutex
 	expireControl chan func() (password []byte, result chan<- bool)
-	expireDone    <-chan struct{}
 	wg            *sync.WaitGroup
 }
 
@@ -181,6 +181,76 @@ func (p *pair) expirableFile(what []byte, where string, expire <-chan struct{}) 
 	return nil
 }
 
+func (p *pair) expirableWindow(expireDone <-chan struct{}) error {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	if p.expireControl == nil {
+		return fmt.Errorf("expieableWindow: allready expired")
+	}
+	if p.wg == nil {
+		return fmt.Errorf("expieableWindow: WTF? pair expireControl is NOT nil, but waitgroup is nil!")
+	}
+
+	// open window, write stuff
+	win, err := p.app.display.CreateWindow()
+	if err != nil {
+		return fmt.Errorf("pair.expirableWindow: can't create window: %v", err)
+	}
+	if err := win.Map(); err != nil {
+		win.Destroy()
+		return fmt.Errorf("pair.expirableWindow: can't map window: %v", err)
+	}
+	stopWindowCloseNotify := make(chan struct{})
+	windowCloseRequest, err := win.CloseNotify(stopWindowCloseNotify)
+	if err != nil {
+		win.Destroy()
+		return fmt.Errorf("pair.expirableWindow: can't listen to window close request: %v", err)
+	}
+
+	// after this point window is successfuly opened
+	// launch a gouroutine that handles window closing
+	p.wg.Add(1) // append this goroutine to pair waitgroup. Waiting is done on password expire
+	go func() {
+		defer p.wg.Done()
+
+		log.Printf("\tstart pair.expirableWindow(): go func(): waiting for password expire to cleanup, or window closing")
+		defer log.Printf("\tend pair.expirableWindow(): go func(): everything cleaned up")
+
+		defer win.Destroy() // destroy created window for sure if this routine exits
+
+		// wait for passphrase to expire or window is closed
+		for windowCloseRequest != nil {
+			log.Printf("\tpair.expirableWindow(): go func(): select waiting signal")
+			select {
+			case _, ok := <-expireDone:
+				log.Printf("\tpair.expirableWindow(): go func(): select got password expireDone signal")
+				if !ok {
+					log.Printf("\tpair.expirableWindow(): go func(): expireDone closed")
+					// password expired, close window, etc...
+
+					// stop window close listening
+					close(stopWindowCloseNotify)
+					stopWindowCloseNotify = nil
+					// do not wait for expire in select
+					expireDone = nil
+				}
+			case _, ok := <-windowCloseRequest:
+				log.Printf("\tpair.expirableWindow(): go func(): select got window windowCloseRequest signal")
+				if !ok {
+					log.Printf("\tpair.expirableWindow(): go func(): windowCloseRequest closed")
+					// somebody is trying to close the window, or listening to close is finished
+					// however, expire password
+					windowCloseRequest = nil
+					//TODO expire password upon window closing
+				}
+			}
+		}
+		log.Printf("\tpair.expirableWindow(): go func(): windowCloseRequest are nil")
+	}()
+	return nil
+}
+
 type pairPassword struct {
 	bytes []byte
 }
@@ -227,18 +297,18 @@ func (p *pair) UnlockHandle(cancel <-chan struct{}) {
 	for unlock != nil {
 		select {
 		case <-unlock:
+			fmt.Printf("Unlocking application for pairing for %v", p.passwordDuration)
 			if err := p.generatePassword(); err != nil {
 				if err == errPairPasswordAllreadyGenerated {
-					log.Printf("Pairing allready unlocked")
+					fmt.Printf("Pairing allready unlocked")
 				} else {
 					log.Printf("pair.UnlockHandle: password generate error: %s", err.Error())
 				}
 				break
 			}
-			log.Printf("Unlocking application for pairing for %v", p.passwordDuration)
 			lock = time.After(p.passwordDuration)
 		case <-lock:
-			log.Printf("Locking application for pairing")
+			fmt.Printf("Locking application for pairing")
 			p.clearPassword()
 			lock = nil
 		case <-cancel:
@@ -261,7 +331,7 @@ func (p *pair) generatePassword() error {
 	//log.Printf("pairHandler: passphrase generated: %s", passphrase)
 
 	// encode passphrase to human readable form
-	passphraseServerHumanReadable := insertEveryN(" ", passphrase, 4)
+	passphraseHumanReadable := insertEveryN(" ", passphrase, 4)
 
 	if expire == nil {
 		return errors.New("generatePassword: password expire channel is nil")
@@ -271,9 +341,17 @@ func (p *pair) generatePassword() error {
 
 	// show human readable passphrase to stdout
 	fmt.Println(strings.Repeat("*", 30))
-	fmt.Println("Passphrase:", passphraseServerHumanReadable)
+	fmt.Println("Passphrase:", passphraseHumanReadable)
+	if urlBase, err := p.app.GetBaseUrlLAN(); err != nil {
+		log.Printf("generatePassword: cant get base url: %v", err)
+	} else {
+		fmt.Println("Url:", urlBase+"pair/"+passphrase)
+	}
 	fmt.Println(strings.Repeat("*", 30))
 
+	if err := p.expirableWindow(expire); err != nil {
+		log.Printf("generatePassword: can't create window with passphrase: %v", err)
+	}
 	return nil
 
 	////do all stuff with password
