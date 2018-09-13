@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"image"
 	"log"
 	"os"
 	"os/signal"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"xgo"
 )
 
 type pair struct {
@@ -181,31 +183,129 @@ func (p *pair) expirableFile(what []byte, where string, expire <-chan struct{}) 
 	return nil
 }
 
-func (p *pair) expirableWindow(expireDone <-chan struct{}) error {
+func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphraseHumanReadable, passphraseUrl string) error {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 
 	if p.expireControl == nil {
-		return fmt.Errorf("expieableWindow: allready expired")
+		return fmt.Errorf("pair.expirableWindowWithPassphrase: allready expired")
 	}
 	if p.wg == nil {
-		return fmt.Errorf("expieableWindow: WTF? pair expireControl is NOT nil, but waitgroup is nil!")
+		return fmt.Errorf("pair.expirableWindowWithPassphrase: WTF? pair expireControl is NOT nil, but waitgroup is nil!")
 	}
 
-	// open window, write stuff
-	win, err := p.app.display.CreateWindow()
+	screen := p.app.display.DefaultScreen()
+	gcc := xgo.GraphicsContextComponents{}
+	gc, err := p.app.display.NewGraphicsContext(
+		gcc.BackgroundPixel(screen.BlackPixel),
+		gcc.ForegroundPixel(screen.WhitePixel),
+		gcc.NewFontIfMatch("*fixed*-20-*"),
+	)
 	if err != nil {
-		return fmt.Errorf("pair.expirableWindow: can't create window: %v", err)
+		return fmt.Errorf("pair.expirableWindowWithPassphrase: graphics context for window texts creation error: %v", err)
 	}
-	if err := win.Map(); err != nil {
-		win.Destroy()
-		return fmt.Errorf("pair.expirableWindow: can't map window: %v", err)
+
+	windowSize := image.Point{}
+
+	components := []struct {
+		name     string
+		drawData [3]image.Point // 0: bounds.Min, 1: bounds.Max, 2: drawPoint
+		drawFunc func(*xgo.Pixmap, image.Point) error
+	}{
+		{
+			name: "human readable text",
+			drawData: func() [3]image.Point {
+				if passphraseHumanReadable == "" {
+					return [3]image.Point{}
+				}
+				info, err := gc.TextExtents(passphraseHumanReadable)
+				if err != nil {
+					log.Printf("pair.expirableWindowWithPassphrase: getting text extents info error: %v", err)
+					return [3]image.Point{}
+				}
+				return [3]image.Point{
+					image.Pt(0, 0),
+					image.Pt(int(info.OverallWidth), int(info.OverallAscent+info.OverallDescent)),
+					image.Pt(0, int(info.OverallAscent)),
+				}
+			}(),
+			drawFunc: func(p *xgo.Pixmap, point image.Point) error {
+				return p.Draw(xgo.PixmapDrawers{}.Text(passphraseHumanReadable, point, gc))
+			},
+		},
 	}
+	log.Println(windowSize)
+	log.Println(components)
+	{ // arange components stacked from up to down and get window size
+		offset := 50
+		windowSize.Y += offset
+		for i, c := range components {
+			for j, p := range c.drawData {
+				components[i].drawData[j] = p.Add(image.Pt(0, windowSize.Y))
+			}
+			c = components[i]
+
+			bounds := image.Rectangle{c.drawData[0], c.drawData[1]}.Bounds()
+			if windowSize.X < bounds.Dx() {
+				windowSize.X = bounds.Dx()
+			}
+			windowSize.Y += bounds.Dy() + offset
+		}
+		windowSize.X += 2 * offset
+	}
+
+	componentsDrawers := []xgo.PixmapDrawer{}
+	{ // center components horizontaly (on x axis) and get pixmap drawers out of them
+		for i, c := range components {
+			width := image.Rectangle{c.drawData[0], c.drawData[1]}.Bounds().Dx()
+			for j, p := range c.drawData {
+				components[i].drawData[j] = p.Add(image.Pt((windowSize.X-width)/2, 0))
+			}
+			c = components[i]
+
+			pt := c.drawData[2]
+			componentsDrawers = append(
+				componentsDrawers,
+				func(p *xgo.Pixmap) error {
+					return c.drawFunc(p, pt)
+				},
+			)
+		}
+	}
+
+	// create pixmap & draw components to pixmap
+	pixmap, err := screen.NewPixmap(
+		windowSize,
+		xgo.PixmapOperations{}.Draw(componentsDrawers...),
+	)
+
+	////create and store passphrase url as qr code in png file
+	//if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
+	//	log.Printf("pair.expirableWindowWithPassphrase: qr code encoding error: %v", err)
+	//} else {
+	//	if err := app.pair.expirableFile(png, fileWithPathPrefix+"passphrase.png", expire); err != nil {
+	//		log.Printf("pair.expirableWindowWithPassphrase: qr code saving error: %v", err)
+	//	}
+	//}
+
+	wo := xgo.WindowOperations{}
+	win, err := p.app.display.NewWindow(
+		wo.Size(windowSize),
+		wo.Attributes(
+			xgo.WindowAttributes{}.BackgroundPixmap(pixmap),
+		),
+		wo.Clear(),
+		wo.Map(),
+	)
+	if err != nil {
+		return fmt.Errorf("pair.expirableWindowWithPassphrase: can't create window: %v", err)
+	}
+
 	stopWindowCloseNotify := make(chan struct{})
 	windowCloseRequest, err := win.CloseNotify(stopWindowCloseNotify)
 	if err != nil {
 		win.Destroy()
-		return fmt.Errorf("pair.expirableWindow: can't listen to window close request: %v", err)
+		return fmt.Errorf("pair.expirableWindowWithPassphrase: can't listen to window close request: %v", err)
 	}
 
 	// after this point window is successfuly opened
@@ -214,19 +314,19 @@ func (p *pair) expirableWindow(expireDone <-chan struct{}) error {
 	go func() {
 		defer p.wg.Done()
 
-		log.Printf("\tstart pair.expirableWindow(): go func(): waiting for password expire to cleanup, or window closing")
-		defer log.Printf("\tend pair.expirableWindow(): go func(): everything cleaned up")
+		log.Printf("\tstart pair.expirableWindowWithPassphrase(): go func(): waiting for password expire to cleanup, or window closing")
+		defer log.Printf("\tend pair.expirableWindowWithPassphrase(): go func(): everything cleaned up")
 
 		defer win.Destroy() // destroy created window for sure if this routine exits
 
 		// wait for passphrase to expire or window is closed
 		for windowCloseRequest != nil {
-			log.Printf("\tpair.expirableWindow(): go func(): select waiting signal")
+			log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): select waiting signal")
 			select {
 			case _, ok := <-expireDone:
-				log.Printf("\tpair.expirableWindow(): go func(): select got password expireDone signal")
+				log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): select got password expireDone signal")
 				if !ok {
-					log.Printf("\tpair.expirableWindow(): go func(): expireDone closed")
+					log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): expireDone closed")
 					// password expired, close window, etc...
 
 					// stop window close listening
@@ -236,9 +336,9 @@ func (p *pair) expirableWindow(expireDone <-chan struct{}) error {
 					expireDone = nil
 				}
 			case _, ok := <-windowCloseRequest:
-				log.Printf("\tpair.expirableWindow(): go func(): select got window windowCloseRequest signal")
+				log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): select got window windowCloseRequest signal")
 				if !ok {
-					log.Printf("\tpair.expirableWindow(): go func(): windowCloseRequest closed")
+					log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): windowCloseRequest closed")
 					// somebody is trying to close the window, or listening to close is finished
 					// however, expire password
 					windowCloseRequest = nil
@@ -246,7 +346,7 @@ func (p *pair) expirableWindow(expireDone <-chan struct{}) error {
 				}
 			}
 		}
-		log.Printf("\tpair.expirableWindow(): go func(): windowCloseRequest are nil")
+		log.Printf("\tpair.expirableWindowWithPassphrase(): go func(): windowCloseRequest are nil")
 	}()
 	return nil
 }
@@ -325,67 +425,32 @@ func (p *pair) generatePassword() error {
 	if err != nil {
 		return err
 	}
-
-	// encode to string via hex
-	passphrase := hex.EncodeToString(passwordBytes)
-	//log.Printf("pairHandler: passphrase generated: %s", passphrase)
-
-	// encode passphrase to human readable form
-	passphraseHumanReadable := insertEveryN(" ", passphrase, 4)
-
 	if expire == nil {
 		return errors.New("generatePassword: password expire channel is nil")
 	}
-
 	log.Printf("generatePassword: new password generated")
 
-	// show human readable passphrase to stdout
-	fmt.Println(strings.Repeat("*", 30))
-	fmt.Println("Passphrase:", passphraseHumanReadable)
+	passphrase := hex.EncodeToString(passwordBytes)
+
+	passphraseUrl := ""
 	if urlBase, err := p.app.GetBaseUrlLAN(); err != nil {
 		log.Printf("generatePassword: cant get base url: %v", err)
 	} else {
-		fmt.Println("Url:", urlBase+"pair/"+passphrase)
+		passphraseUrl = urlBase + "pair/" + passphrase
+	}
+
+	passphraseHumanReadable := insertEveryN(" ", passphrase, 4)
+
+	fmt.Println(strings.Repeat("*", 30))
+	fmt.Println("Passphrase:", passphraseHumanReadable)
+	if passphraseUrl != "" {
+		fmt.Println("Url:", passphraseUrl)
 	}
 	fmt.Println(strings.Repeat("*", 30))
 
-	if err := p.expirableWindow(expire); err != nil {
+	if err := p.expirableWindowWithPassphrase(expire, passphraseHumanReadable, passphraseUrl); err != nil {
 		log.Printf("generatePassword: can't create window with passphrase: %v", err)
 	}
+
 	return nil
-
-	////do all stuff with password
-	//fileWithPathPrefix := filepath.Join(os.TempDir(), "xrcServer."+app.port+".")
-
-	////store passphrase to tmp file
-	//if err := app.pair.expirableFile([]byte(passphraseServerHumanReadable), fileWithPathPrefix+"passphrase.txt", expire); err != nil {
-	//	log.Printf("generatePassword: can't create tmp text file: %v", err)
-	//}
-
-	//ip, err := externalIP()
-	//if err != nil {
-	//	log.Printf("generatePassword: obtaining external ip address error: %v", err)
-	//} else {
-	//	//create passphrase url for LAN
-	//	protocol := "http"
-	//	if app.noTLS == false {
-	//		protocol += "s"
-	//	}
-	//	passphraseServerURL := protocol + "://" + ip.String() + ":" + app.port + "/pair/" + passphraseServer
-
-	//	//store passphrase url to tmp file
-	//	if err := app.pair.expirableFile([]byte(passphraseServerURL), fileWithPathPrefix+"passphrase.url", expire); err != nil {
-	//		log.Printf("generatePassword: can't create tmp url file: %v", err)
-	//	}
-
-	//	//create and store passphrase url as qr code in png file
-	//	if png, err := qrcode.Encode(passphraseServerURL, qrcode.Medium, 256); err != nil {
-	//		log.Printf("generatePassword: qr code encoding error: %v", err)
-	//	} else {
-	//		if err := app.pair.expirableFile(png, fileWithPathPrefix+"passphrase.png", expire); err != nil {
-	//			log.Printf("generatePassword: qr code saving error: %v", err)
-	//		}
-	//	}
-	//}
-
 }

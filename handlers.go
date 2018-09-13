@@ -549,7 +549,6 @@ func (app application) GetBaseUrlLAN() (string, error) {
 	if err != nil {
 		return "", errors.New("app.GetBaseUrlLAN: obtaining external ip address error: " + err.Error())
 	}
-	//create passphrase url for LAN
 	protocol := "http"
 	if app.noTLS == false {
 		protocol += "s"
