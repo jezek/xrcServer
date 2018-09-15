@@ -145,6 +145,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		//TODO if pairing is unloked, pair passphrase is entered, or no passphrase needed, invalidate passphrase (and lock pairing)
 		// authorized allready, redirect to app
 		log.Print("pairHandler: allready authenticated")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

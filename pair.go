@@ -249,7 +249,7 @@ func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphr
 			if pairUrl == "" {
 				return image.Rectangle{}, image.Point{}, nil
 			}
-			url := pairUrl + passphrase
+			url := pairUrl + "pair/" + passphrase
 			//create and store passphrase url as qr code in png file
 			qrCode, err := qrcode.New(url, qrcode.Highest)
 			if err != nil {
