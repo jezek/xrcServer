@@ -61,7 +61,6 @@ func (app *application) newPairSecureCookie() (string, *securecookie.SecureCooki
 	}
 	privHash := sha256.Sum256(priv)
 	sCookie := securecookie.New(priv, privHash[:])
-	//TODO? func with locks
 	sCookie.MaxAge(int(app.pair.passwordDuration.Seconds()))
 	return cookieName, sCookie, nil
 }
@@ -111,7 +110,6 @@ func (app *application) authenticate(h http.Handler) http.Handler {
 	})
 }
 
-//TODO simplify pairing
 func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("pairHandler")
 	defer log.Printf("pairHandler end")
@@ -124,6 +122,7 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// is user allready authorized?
+	allreadyAuthorized := false
 	ac, err := r.Cookie(ascn)
 	if err == nil {
 		//log.Printf("pairHandler: got auth cookie")
@@ -140,33 +139,35 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			http.SetCookie(w, ac)
 
-			// return error
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
+		} else {
+			allreadyAuthorized = true
 		}
 
-		//TODO if pairing is unloked, pair passphrase is entered, or no passphrase needed, invalidate passphrase (and lock pairing)
-		// authorized allready, redirect to app
-		log.Print("pairHandler: allready authenticated")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
 	}
 
 	app.pair.mx.Lock()
-	// if application pairing is locked return forbidden error, so we wil not authorize anybody
 	if app.pair.expireControl == nil {
 		log.Printf("pairHandler: appliation is locked for pairing")
+		// application pairing is locked
+		if allreadyAuthorized {
+			// authorized allready, redirect to app
+			log.Print("pairHandler: allready authenticated")
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
+		// return forbidden error, so we wil not authorize anybody
 		http.Error(w, "Pairing is locked", http.StatusForbidden)
 		app.pair.mx.Unlock()
 		return
 	}
 	app.pair.mx.Unlock()
+
+	// application pairing is unlocked, try to pair
 	//log.Printf("pairHandler: don't have auth cookie: %s", err.Error())
 
 	if app.pair.passwordLen > 0 {
 		// we need password for pairing, is it allready in url and we need to authentificate it, or we need to generate new?
 		passphraseURL := r.URL.Path
-
 		if passphraseURL == "" {
 			log.Printf("pairHandler: url passphrase missing")
 
@@ -177,6 +178,16 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Printf("pairHandler: pair page served: %s", r.RemoteAddr)
+			return
+		}
+		log.Printf("pairHandler: got authorization request with passphrase \"%s\"", passphraseURL)
+
+		if allreadyAuthorized {
+			log.Print("pairHandler: allready authenticated")
+
+			app.pair.clearPassword()
+
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -202,8 +213,17 @@ func (app *application) pairHandler(w http.ResponseWriter, r *http.Request) {
 		log.Print("pairHandler: passphrase is correct")
 	} else {
 		log.Print("pairHandler: no password required")
+		if allreadyAuthorized {
+			log.Print("pairHandler: allready authenticated")
+
+			app.pair.clearPassword()
+
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
 	}
 
+	log.Print("pairHandler: all clear, authorize user")
 	//log.Print("pairHandler: pair user")
 	user := appUser{
 		Agent: r.UserAgent(),

@@ -185,7 +185,137 @@ func (p *pair) expirableFile(what []byte, where string, expire <-chan struct{}) 
 	return nil
 }
 
-func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphrase string) error {
+func (p *pair) drawPassphrase(passphrase string) xgo.WindowOperation {
+	return func(win *xgo.Window) error {
+		screen := win.Screen()
+
+		gcc := xgo.GraphicsContextComponents{}
+		gc, err := p.app.display.NewGraphicsContext(
+			gcc.BackgroundPixel(screen.BlackPixel),
+			gcc.ForegroundPixel(screen.WhitePixel),
+			gcc.NewFontIfMatch("*fixed*-20-*"),
+		)
+		if err != nil {
+			return fmt.Errorf("pair.expirableWindowWithPassphrase: graphics context for window texts creation error: %v", err)
+		}
+
+		windowSize := image.Point{}
+
+		pairUrl, _ := p.app.GetBaseUrlLAN()
+
+		components := []func() (bounds image.Rectangle, drawPoint image.Point, draw func(*xgo.Pixmap, image.Point) error){
+			// url to the pairing
+			func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
+				text := pairUrl
+				if text == "" {
+					text = "Can't figeure out what your pairing address is."
+				}
+				info, err := gc.TextExtents(text)
+				if err != nil {
+					log.Printf("pair.expirableWindowWithPassphrase: getting text extents for \"%s\" info error: %v", text, err)
+					return image.Rectangle{}, image.Point{}, nil
+				}
+				return image.Rect(0, 0, int(info.OverallWidth), int(info.OverallAscent+info.OverallDescent)), image.Pt(0, int(info.OverallAscent)),
+					func(p *xgo.Pixmap, point image.Point) error {
+						return p.Draw(xgo.PixmapDrawers{}.Text(text, point, gc))
+					}
+			},
+			// human readable passphrase
+			func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
+				if passphrase == "" {
+					return image.Rectangle{}, image.Point{}, nil
+				}
+				humanRedable := insertEveryN(" ", passphrase, 4)
+				info, err := gc.TextExtents(humanRedable)
+				if err != nil {
+					log.Printf("pair.expirableWindowWithPassphrase: getting text extents for human readable passphrase info error: %v", err)
+					return image.Rectangle{}, image.Point{}, nil
+				}
+				return image.Rect(0, 0, int(info.OverallWidth), int(info.OverallAscent+info.OverallDescent)), image.Pt(0, int(info.OverallAscent)),
+					func(p *xgo.Pixmap, point image.Point) error {
+						return p.Draw(xgo.PixmapDrawers{}.Text(humanRedable, point, gc))
+					}
+			},
+			// qr code
+			func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
+				if pairUrl == "" {
+					return image.Rectangle{}, image.Point{}, nil
+				}
+				url := pairUrl + "pair/" + passphrase
+				//create and store passphrase url as qr code in png file
+				qrCode, err := qrcode.New(url, qrcode.Highest)
+				if err != nil {
+					log.Printf("pair.expirableWindowWithPassphrase: qr code encoding error: %v", err)
+					return image.Rectangle{}, image.Point{}, nil
+				}
+				img := qrCode.Image(-10)
+				return img.Bounds(), img.Bounds().Min,
+					func(p *xgo.Pixmap, point image.Point) error {
+						return p.Draw(xgo.PixmapDrawers{}.ImageAt(img, point))
+					}
+			},
+		}
+
+		drawData := [][3]image.Point{}
+		drawers := []xgo.PixmapDrawer{}
+		{ // get data for compnents, arange them stacked from up to down and get window size
+			offset := 25
+			windowSize.Y += offset
+
+			for _, cf := range components {
+				bounds, drawPoint, drawFunc := cf()
+				if drawFunc == nil {
+					continue
+				}
+
+				verticalOffset := image.Pt(0, windowSize.Y)
+				bounds = bounds.Add(verticalOffset)
+				drawPoint = drawPoint.Add(verticalOffset)
+
+				if windowSize.X < bounds.Dx() {
+					windowSize.X = bounds.Dx()
+				}
+				windowSize.Y += bounds.Dy() + offset
+
+				drawData = append(drawData, [3]image.Point{bounds.Min, bounds.Max, drawPoint})
+
+				drawerIndex := len(drawData) - 1
+				drawers = append(
+					drawers,
+					func(p *xgo.Pixmap) error {
+						return drawFunc(p, drawData[drawerIndex][2])
+					},
+				)
+			}
+			windowSize.X += 2 * offset
+		}
+
+		{ // center components horizontaly (on x axis) and get pixmap drawers out of them
+			for i, data := range drawData {
+				width := image.Rectangle{data[0], data[1]}.Dx()
+				for j, p := range data {
+					drawData[i][j] = p.Add(image.Pt((windowSize.X-width)/2, 0))
+				}
+			}
+		}
+
+		// create pixmap & draw components to pixmap
+		pixmap, err := screen.NewPixmap(
+			windowSize,
+			xgo.PixmapOperations{}.Draw(drawers...),
+		)
+
+		wo := xgo.WindowOperations{}
+		return win.Operations(
+			wo.Size(windowSize),
+			wo.Attributes(
+				xgo.WindowAttributes{}.BackgroundPixmap(pixmap),
+			),
+		)
+	}
+}
+
+func (p *pair) expirableWindow(expireDone <-chan struct{}, operations ...xgo.WindowOperation) error {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 
@@ -196,132 +326,13 @@ func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphr
 		return fmt.Errorf("pair.expirableWindowWithPassphrase: WTF? pair expireControl is NOT nil, but waitgroup is nil!")
 	}
 
-	screen := p.app.display.DefaultScreen()
-	gcc := xgo.GraphicsContextComponents{}
-	gc, err := p.app.display.NewGraphicsContext(
-		gcc.BackgroundPixel(screen.BlackPixel),
-		gcc.ForegroundPixel(screen.WhitePixel),
-		gcc.NewFontIfMatch("*fixed*-20-*"),
-	)
-	if err != nil {
-		return fmt.Errorf("pair.expirableWindowWithPassphrase: graphics context for window texts creation error: %v", err)
-	}
-
-	windowSize := image.Point{}
-
-	pairUrl, _ := p.app.GetBaseUrlLAN()
-
-	components := []func() (bounds image.Rectangle, drawPoint image.Point, draw func(*xgo.Pixmap, image.Point) error){
-		// url to the pairing
-		func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
-			text := pairUrl
-			if text == "" {
-				text = "Can't figeure out what your pairing address is."
-			}
-			info, err := gc.TextExtents(text)
-			if err != nil {
-				log.Printf("pair.expirableWindowWithPassphrase: getting text extents for \"%s\" info error: %v", text, err)
-				return image.Rectangle{}, image.Point{}, nil
-			}
-			return image.Rect(0, 0, int(info.OverallWidth), int(info.OverallAscent+info.OverallDescent)), image.Pt(0, int(info.OverallAscent)),
-				func(p *xgo.Pixmap, point image.Point) error {
-					return p.Draw(xgo.PixmapDrawers{}.Text(text, point, gc))
-				}
-		},
-		// human readable passphrase
-		func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
-			if passphrase == "" {
-				return image.Rectangle{}, image.Point{}, nil
-			}
-			humanRedable := insertEveryN(" ", passphrase, 4)
-			info, err := gc.TextExtents(humanRedable)
-			if err != nil {
-				log.Printf("pair.expirableWindowWithPassphrase: getting text extents for human readable passphrase info error: %v", err)
-				return image.Rectangle{}, image.Point{}, nil
-			}
-			return image.Rect(0, 0, int(info.OverallWidth), int(info.OverallAscent+info.OverallDescent)), image.Pt(0, int(info.OverallAscent)),
-				func(p *xgo.Pixmap, point image.Point) error {
-					return p.Draw(xgo.PixmapDrawers{}.Text(humanRedable, point, gc))
-				}
-		},
-		// qr code
-		func() (image.Rectangle, image.Point, func(*xgo.Pixmap, image.Point) error) {
-			if pairUrl == "" {
-				return image.Rectangle{}, image.Point{}, nil
-			}
-			url := pairUrl + "pair/" + passphrase
-			//create and store passphrase url as qr code in png file
-			qrCode, err := qrcode.New(url, qrcode.Highest)
-			if err != nil {
-				log.Printf("pair.expirableWindowWithPassphrase: qr code encoding error: %v", err)
-				return image.Rectangle{}, image.Point{}, nil
-			}
-			img := qrCode.Image(-10)
-			return img.Bounds(), img.Bounds().Min,
-				func(p *xgo.Pixmap, point image.Point) error {
-					//TODO! ImageAt has big TODO
-					return p.Draw(xgo.PixmapDrawers{}.ImageAt(img, point))
-				}
-		},
-	}
-
-	drawData := [][3]image.Point{}
-	drawers := []xgo.PixmapDrawer{}
-	{ // get data for compnents, arange them stacked from up to down and get window size
-		offset := 25
-		windowSize.Y += offset
-
-		for _, cf := range components {
-			bounds, drawPoint, drawFunc := cf()
-			if drawFunc == nil {
-				continue
-			}
-
-			verticalOffset := image.Pt(0, windowSize.Y)
-			bounds = bounds.Add(verticalOffset)
-			drawPoint = drawPoint.Add(verticalOffset)
-
-			if windowSize.X < bounds.Dx() {
-				windowSize.X = bounds.Dx()
-			}
-			windowSize.Y += bounds.Dy() + offset
-
-			drawData = append(drawData, [3]image.Point{bounds.Min, bounds.Max, drawPoint})
-
-			drawerIndex := len(drawData) - 1
-			drawers = append(
-				drawers,
-				func(p *xgo.Pixmap) error {
-					return drawFunc(p, drawData[drawerIndex][2])
-				},
-			)
-		}
-		windowSize.X += 2 * offset
-	}
-
-	{ // center components horizontaly (on x axis) and get pixmap drawers out of them
-		for i, data := range drawData {
-			width := image.Rectangle{data[0], data[1]}.Dx()
-			for j, p := range data {
-				drawData[i][j] = p.Add(image.Pt((windowSize.X-width)/2, 0))
-			}
-		}
-	}
-
-	// create pixmap & draw components to pixmap
-	pixmap, err := screen.NewPixmap(
-		windowSize,
-		xgo.PixmapOperations{}.Draw(drawers...),
-	)
-
 	wo := xgo.WindowOperations{}
 	win, err := p.app.display.NewWindow(
-		wo.Size(windowSize),
-		wo.Attributes(
-			xgo.WindowAttributes{}.BackgroundPixmap(pixmap),
-		),
-		wo.Clear(),
-		wo.Map(),
+		append(
+			operations,
+			wo.Clear(),
+			wo.Map(),
+		)...,
 	)
 	if err != nil {
 		return fmt.Errorf("pair.expirableWindowWithPassphrase: can't create window: %v", err)
@@ -338,6 +349,7 @@ func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphr
 	// launch a gouroutine that handles window closing
 	p.wg.Add(1) // append this goroutine to pair waitgroup. Waiting is done on password expire
 	go func() {
+		defer p.clearPassword()
 		defer p.wg.Done()
 
 		log.Printf("\tstart pair.expirableWindowWithPassphrase(): go func(): waiting for password expire to cleanup, or window closing")
@@ -368,7 +380,6 @@ func (p *pair) expirableWindowWithPassphrase(expireDone <-chan struct{}, passphr
 					// somebody is trying to close the window, or listening to close is finished
 					// however, expire password
 					windowCloseRequest = nil
-					//TODO expire password upon window closing
 				}
 			}
 		}
@@ -420,22 +431,29 @@ func (p *pair) UnlockHandle(cancel <-chan struct{}) {
 	defer signal.Stop(unlock)
 
 	lock := (<-chan time.Time)(nil)
+	expire := p.expireControl
 	for unlock != nil {
 		select {
 		case <-unlock:
-			fmt.Printf("Unlocking application for pairing for %v", p.passwordDuration)
+			fmt.Printf("Unlocking application for pairing for %v\n", p.passwordDuration)
 			if err := p.generatePassword(); err != nil {
 				if err == errPairPasswordAllreadyGenerated {
-					fmt.Printf("Pairing allready unlocked")
+					fmt.Printf("Pairing allready unlocked\n")
 				} else {
-					log.Printf("pair.UnlockHandle: password generate error: %s", err.Error())
+					log.Printf("pair.UnlockHandle: password generate error: %s\n", err.Error())
 				}
 				break
 			}
 			lock = time.After(p.passwordDuration)
+			expire = p.expireControl
 		case <-lock:
-			fmt.Printf("Locking application for pairing")
+			fmt.Printf("Locking application for pairing - expired timeout\n")
 			p.clearPassword()
+			lock = nil
+			expire = nil
+		case <-expire:
+			fmt.Printf("Locking application for pairing - pasword exired before timeout\n")
+			expire = nil
 			lock = nil
 		case <-cancel:
 			unlock = nil
@@ -443,7 +461,6 @@ func (p *pair) UnlockHandle(cancel <-chan struct{}) {
 	}
 }
 
-//TODO open window with password text and qrcode
 //Generates password.
 //Converts password to hex string and is printed to server stdout
 func (p *pair) generatePassword() error {
@@ -474,7 +491,7 @@ func (p *pair) generatePassword() error {
 	}
 	fmt.Println(strings.Repeat("*", 30))
 
-	if err := p.expirableWindowWithPassphrase(expire, passphrase); err != nil {
+	if err := p.expirableWindow(expire, p.drawPassphrase(passphrase)); err != nil {
 		log.Printf("generatePassword: can't create window with passphrase: %v", err)
 	}
 
