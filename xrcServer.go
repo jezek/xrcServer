@@ -9,8 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	"https"
-	"https/certificates"
 	"io"
 	"log"
 	"net"
@@ -23,6 +21,9 @@ import (
 	"syscall"
 	"time"
 	"xgo"
+
+	"github.com/jezek/https"
+	"github.com/jezek/https/certificates"
 )
 
 type application struct {
