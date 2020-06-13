@@ -15,8 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"xgo"
 
+	"github.com/jezek/xgo"
 	qrcode "github.com/skip2/go-qrcode"
 )
 

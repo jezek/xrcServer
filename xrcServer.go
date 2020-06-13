@@ -20,10 +20,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"xgo"
 
 	"github.com/jezek/https"
 	"github.com/jezek/https/certificates"
+	"github.com/jezek/xgo"
 )
 
 type application struct {
